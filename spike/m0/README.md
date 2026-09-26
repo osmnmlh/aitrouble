@@ -77,6 +77,8 @@ export OPENAI_BASE_URL=http://localhost:1234/v1
 go run ./spike/m0/ --insecure
 ```
 
+> **⚠️ WARNING:** The `--insecure` flag exists **only** for the M0 testing spike to allow testing against local httptest servers. Disabling TLS certificate verification is fundamentally unsafe for normal usage. This flag must **NOT** be carried into the production CLI without a dedicated security review.
+
 ## Success criteria checklist
 
 - [x] EffectiveConfig precedence proven (shell > .env > absent)

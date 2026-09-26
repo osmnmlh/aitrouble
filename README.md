@@ -152,8 +152,8 @@ go build ./cmd/aitrouble
 | Milestone | Target | Status |
 |---|---|---|
 | **M0** – Spike Verification | Week 1 | ✅ Complete |
-| **M1** – Core Engine & Effective Config | Week 2 | 🔄 In Progress |
-| **M2** – Network & Provider Probes | Week 3 | ⏳ Planned |
+| **M1** – Core Engine & Effective Config | Week 2 | ✅ Complete |
+| **M2** – Network Probes | Week 3 | 🔄 In Progress |
 | **M3** – Local MCP & Doctor CLI v0.1 | Week 4 | ⏳ Planned |
 
 ---

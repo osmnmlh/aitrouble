@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,6 +29,12 @@ func setupConfig(t *testing.T, baseURL, apiKey string) core.EffectiveConfig {
 		t.Fatalf("failed to resolve config: %v", err)
 	}
 	return cfg
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
 func setupProber(t *testing.T, handler http.HandlerFunc) (*ProviderProber, *httptest.Server) {
@@ -223,16 +230,18 @@ func TestProbeModels_Cancellation(t *testing.T) {
 
 // -- L. Connection / transport error --
 func TestProbeModels_TransportError(t *testing.T) {
-	p := NewProviderProber(nil, time.Second)
-	// Invalid port, connection refused
-	cfg := setupConfig(t, "http://127.0.0.1:12345", "test-key")
+	p := NewProviderProber(roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return nil, errors.New("connection refused")
+	}), time.Second)
+
+	cfg := setupConfig(t, "http://example.invalid/v1", "test-key")
 	res := p.ProbeModels(context.Background(), cfg)
 
 	if res.Status != core.StatusFail {
 		t.Errorf("expected fail, got %v", res.Status)
 	}
-	if res.FailureKind != "tcp_refused" && res.FailureKind != "http_error" {
-		t.Errorf("expected tcp_refused or http_error, got %v", res.FailureKind)
+	if res.FailureKind != "tcp_refused" {
+		t.Errorf("expected tcp_refused, got %v", res.FailureKind)
 	}
 }
 

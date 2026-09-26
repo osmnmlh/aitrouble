@@ -9,8 +9,7 @@ import (
 
 // A: Sadece shell
 func TestConfig_ShellOnly(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "shell-key")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	t.Setenv("OPENAI_API_KEY", "shell-key")
 
 	cfg, err := ResolveEffectiveConfig("")
 	if err != nil {
@@ -44,8 +43,7 @@ func TestConfig_DotEnvOnly(t *testing.T) {
 
 // C: İkisi birden
 func TestConfig_ShellWinsOverDotEnv(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "shell-wins")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	t.Setenv("OPENAI_API_KEY", "shell-wins")
 
 	dir := t.TempDir()
 	envPath := filepath.Join(dir, ".env")
@@ -85,8 +83,7 @@ func TestConfig_Neither(t *testing.T) {
 
 // E: Shell empty
 func TestConfig_ShellEmpty(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	t.Setenv("OPENAI_API_KEY", "")
 
 	dir := t.TempDir()
 	envPath := filepath.Join(dir, ".env")
@@ -105,10 +102,8 @@ func TestConfig_ShellEmpty(t *testing.T) {
 
 // F: Secret display
 func TestConfig_SecretDisplay(t *testing.T) {
-	os.Setenv("OPENAI_API_KEY", "super-secret-key")
-	defer os.Unsetenv("OPENAI_API_KEY")
-	os.Setenv("OPENAI_BASE_URL", "https://custom.com/v1")
-	defer os.Unsetenv("OPENAI_BASE_URL")
+	t.Setenv("OPENAI_API_KEY", "super-secret-key")
+	t.Setenv("OPENAI_BASE_URL", "https://custom.com/v1")
 
 	cfg, _ := ResolveEffectiveConfig("")
 
@@ -116,8 +111,17 @@ func TestConfig_SecretDisplay(t *testing.T) {
 	if str := apiKey.String(); str != "[REDACTED]" {
 		t.Errorf("expected API key to be redacted, got: %s", str)
 	}
+	if str := fmt.Sprintf("%v", apiKey); str != "[REDACTED]" {
+		t.Errorf("expected format string %%v to redact, got: %s", str)
+	}
+	if str := fmt.Sprintf("%+v", apiKey); str != "[REDACTED]" {
+		t.Errorf("expected format string %%+v to redact, got: %s", str)
+	}
 	if str := fmt.Sprintf("%s", apiKey); str != "[REDACTED]" {
-		t.Errorf("expected format string to use String() and redact, got: %s", str)
+		t.Errorf("expected format string %%s to redact, got: %s", str)
+	}
+	if str := fmt.Sprintf("%#v", apiKey); str != "[REDACTED]" {
+		t.Errorf("expected format string %%#v to redact, got: %s", str)
 	}
 
 	baseURL, _ := cfg.Get("OPENAI_BASE_URL")
@@ -134,7 +138,7 @@ func TestConfig_SecretDisplay(t *testing.T) {
 	}
 
 	// Empty non-secret
-	os.Setenv("OPENAI_BASE_URL", "")
+	t.Setenv("OPENAI_BASE_URL", "")
 	cfg3, _ := ResolveEffectiveConfig("")
 	emptyURL, _ := cfg3.Get("OPENAI_BASE_URL")
 	if str := emptyURL.String(); str != `""` {

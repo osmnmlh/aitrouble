@@ -80,22 +80,19 @@ go install github.com/osmnmlh/aitrouble/cmd/aitrouble@latest
 ### Run
 
 ```bash
-# Run full diagnostic in current directory
+# Check version (currently implemented)
+aitrouble --version
+
+# Run full diagnostic in current directory (Planned)
 aitrouble doctor
 
-# Target a specific .env file
+# Target a specific .env file (Planned)
 aitrouble doctor --env-file /path/to/.env
-
-# Run only network probes
-aitrouble doctor --only=network
-
-# Output machine-readable JSON
-aitrouble doctor --format=json
 ```
 
 ---
 
-## How It Works
+## How It Works (Planned Architecture)
 
 ```
 Your Project Directory

@@ -38,6 +38,11 @@ func (v ConfigValue) String() string {
 	return v.value
 }
 
+// GoString ensures %#v formatting safely redacts secrets.
+func (v ConfigValue) GoString() string {
+	return v.String()
+}
+
 // EffectiveConfig holds the resolved configuration for the application.
 type EffectiveConfig struct {
 	Values map[string]ConfigValue
@@ -68,6 +73,9 @@ var supportedKeys = []string{
 // ResolveEffectiveConfig resolves configuration using the precedence:
 // shell environment > .env file > default
 func ResolveEffectiveConfig(envFile string) (EffectiveConfig, error) {
+	if envFile == "" {
+		envFile = ".env"
+	}
 	dotenv, err := loadDotEnv(envFile)
 	if err != nil {
 		return EffectiveConfig{}, err
@@ -82,9 +90,6 @@ func ResolveEffectiveConfig(envFile string) (EffectiveConfig, error) {
 }
 
 func loadDotEnv(envFile string) (map[string]string, error) {
-	if envFile == "" {
-		return map[string]string{}, nil
-	}
 	f, err := os.Open(envFile)
 	if err != nil {
 		if os.IsNotExist(err) {

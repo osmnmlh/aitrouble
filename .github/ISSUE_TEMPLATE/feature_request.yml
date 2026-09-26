@@ -1,0 +1,100 @@
+---
+name: 🚀 Feature Request
+description: Suggest a new feature, probe, or diagnostic layer for aitrouble
+title: "[Feature]: "
+labels: ["type:feature"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! `aitrouble` aims to be the definitive AI integration troubleshooter. 
+        Your idea will help us decide which probes and providers to add next.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: |
+        What problem does this feature solve? Describe the scenario where you needed this but didn't have it.
+        "I was trying to debug X, but aitrouble couldn't tell me Y because..."
+      placeholder: |
+        When using Azure OpenAI, aitrouble doesn't distinguish between a wrong deployment name 
+        and an invalid API key — both return 404, but the fix is completely different.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you'd like to see. Include example CLI output if possible.
+      placeholder: |
+        Add an Azure-specific probe that:
+        1. Detects `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY` in Effective Config
+        2. Probes `{endpoint}/openai/deployments?api-version=...` 
+        3. Returns distinct evidence for "invalid key" vs "deployment not found"
+
+        Example output:
+          ✗  Azure › Deployment 'gpt-4-turbo' not found
+             Available: ['gpt-35-turbo', 'text-embedding-ada-002']
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches or workarounds have you tried?
+      placeholder: "I manually ran curl to the Azure management API, but that requires extra permissions..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layer(s) does this feature affect?
+      multiple: true
+      options:
+        - Config Engine / Effective Configuration
+        - Network › DNS
+        - Network › TCP
+        - Network › TLS
+        - Network › HTTP
+        - Provider Probe (OpenAI)
+        - Provider Probe (Azure OpenAI)
+        - Provider Probe (Anthropic)
+        - Provider Probe (Google Gemini)
+        - Provider Probe (Other OpenAI-compatible)
+        - Local MCP Process
+        - CLI / Output / Formatting
+        - New top-level command
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this to your workflow?
+      options:
+        - Critical — I'm blocked without this
+        - High — I work around it daily
+        - Medium — Nice to have
+        - Low — Future idea
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: "I'm willing to submit a PR for this feature."
+        - label: "I can provide a test fixture (e.g., a mock server response) to help implementation."
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Links to provider API docs, related issues, or any other context.

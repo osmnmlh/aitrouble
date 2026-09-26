@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Download and verify dependencies
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests with race detector
+        run: go test -v -race -timeout 120s ./...
+
+  build:
+    name: Build Verification (Linux)
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Build binary (dry-run verification)
+        run: |
+          CGO_ENABLED=0 go build -v -trimpath \
+            -ldflags="-s -w -X main.version=$(git describe --tags --always --dirty)" \
+            -o aitrouble \
+            ./cmd/aitrouble
+
+      - name: Verify binary runs
+        run: ./aitrouble --version
+
+      - name: Cross-compile for all targets
+        run: |
+          GOOS=linux   GOARCH=amd64  CGO_ENABLED=0 go build -trimpath -o /dev/null ./cmd/aitrouble
+          GOOS=darwin  GOARCH=amd64  CGO_ENABLED=0 go build -trimpath -o /dev/null ./cmd/aitrouble
+          GOOS=darwin  GOARCH=arm64  CGO_ENABLED=0 go build -trimpath -o /dev/null ./cmd/aitrouble
+          GOOS=windows GOARCH=amd64  CGO_ENABLED=0 go build -trimpath -o /dev/null ./cmd/aitrouble

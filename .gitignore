@@ -1,0 +1,29 @@
+# Binaries
+aitrouble
+aitrouble.exe
+
+# Build artifacts
+dist/
+
+# Environment files (never commit real secrets)
+.env
+.env.local
+.env.*.local
+
+# Go workspace
+go.work
+go.work.sum
+
+# Test artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Editor & OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

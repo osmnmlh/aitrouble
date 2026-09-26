@@ -1,0 +1,135 @@
+---
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in aitrouble
+title: "[Bug]: "
+labels: ["type:bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to file a bug report. Please fill out the form below as completely as possible.
+
+        > **Security notice:** Do NOT paste real API keys or secrets anywhere in this form. `aitrouble` redacts secrets in its output — please use that redacted output here.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I run `aitrouble doctor`, it crashes instead of showing the network probe result."
+    validations:
+      required: true
+
+  - type: textarea
+    id: cli-output
+    attributes:
+      label: aitrouble doctor Terminal Output
+      description: |
+        Paste the **full terminal output** of `aitrouble doctor` (or the relevant subcommand). 
+        The output already has secrets redacted — paste it as-is.
+      render: shell
+      placeholder: |
+        $ aitrouble doctor
+        
+        [1/4] Effective Configuration
+          ✓  Source: shell env   OPENAI_API_KEY  = sk-•••••••••••oXyZ
+          ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: "The network probe should complete and show a TCP timeout error."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      value: |
+        1. Set up environment: `export OPENAI_BASE_URL=...`
+        2. Run: `aitrouble doctor`
+        3. Observe: ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Linux (x86_64)
+        - Linux (arm64)
+        - macOS (Intel / x86_64)
+        - macOS (Apple Silicon / arm64)
+        - Windows (x86_64)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: go-version
+    attributes:
+      label: Go Version
+      description: Output of `go version`
+      placeholder: "go version go1.23.0 linux/amd64"
+    validations:
+      required: true
+
+  - type: input
+    id: aitrouble-version
+    attributes:
+      label: aitrouble Version
+      description: Output of `aitrouble --version`
+      placeholder: "aitrouble v0.1.0 (abc1234)"
+    validations:
+      required: true
+
+  - type: input
+    id: target-endpoint
+    attributes:
+      label: Target Endpoint (redacted)
+      description: The base URL being probed, with any sensitive parts redacted.
+      placeholder: "https://api.openai.com/v1  or  https://my-proxy.example.com/v1"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which diagnostic layer failed or behaved unexpectedly?
+      multiple: true
+      options:
+        - Config / Effective Configuration
+        - Network › DNS
+        - Network › TCP
+        - Network › TLS
+        - Network › HTTP
+        - Provider Probe (OpenAI / compatible)
+        - Local MCP Process
+        - CLI / Output formatting
+        - Other / Unknown
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: secret-check
+    attributes:
+      label: Security Checklist
+      options:
+        - label: "I confirm that no real API keys, tokens, or secrets appear anywhere in this report."
+          required: true
+        - label: "I used the redacted output from `aitrouble doctor` (secrets shown as `sk-•••••••oXyZ`)."
+          required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context, logs, or screenshots that may help.

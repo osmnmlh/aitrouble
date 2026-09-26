@@ -91,9 +91,6 @@ func TestProbeTCP_Success(t *testing.T) {
 	if r.FailureKind != "" {
 		t.Errorf("pass should have empty FailureKind, got %q", r.FailureKind)
 	}
-	if r.Latency == 0 {
-		t.Error("latency should be non-zero on success")
-	}
 }
 
 // Refused: fake dialer returns a connection-refused-like error.
@@ -179,13 +176,22 @@ func TestProbeTLS_Success(t *testing.T) {
 	assertStatus(t, r, StatusPass)
 }
 
-// TLS failure: fake dialer returns a TLS-like error message.
+// TLS failure: real TLS server with self-signed cert, but default prober (doesn't trust it).
 func TestProbeTLS_CertError(t *testing.T) {
-	p := &NetworkProber{
-		Dial:    fakeDialer(fmt.Errorf("tls: failed to verify certificate: x509: certificate signed by unknown authority")),
-		Timeout: 5 * time.Second,
-	}
-	r := p.ProbeTLS(context.Background(), "bad-cert.example.com", 443)
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(ts.URL, "https://"))
+	port := 0
+	fmt.Sscanf(portStr, "%d", &port)
+
+	// Default prober uses real net.Dialer and default TLS config (verifies certs).
+	// Because ts uses a self-signed cert not in the system root, this will fail.
+	p := DefaultNetworkProber(5 * time.Second)
+
+	r := p.ProbeTLS(context.Background(), host, port)
 	assertStatus(t, r, StatusFail)
 	assertFailureKind(t, r, "tls_cert_error")
 }

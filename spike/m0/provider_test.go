@@ -112,7 +112,7 @@ func TestProbeModels_OK_InvalidShape(t *testing.T) {
 
 	assertStatus(t, r, StatusFail)
 	assertFailureKind(t, r, "provider_invalid_response")
-	
+
 	combined := strings.Join(r.Evidence, " ")
 	if !strings.Contains(combined, "not the expected /models response shape") {
 		t.Error("expected invalid shape message in evidence")

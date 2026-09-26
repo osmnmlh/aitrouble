@@ -91,11 +91,12 @@ func main() {
 	var providerResult *ProbeResult
 
 	networkOK := dnsResult.Status == StatusPass &&
-		(tcpResult == nil || tcpResult.Status == StatusPass)
+		(tcpResult == nil || tcpResult.Status == StatusPass) &&
+		(tlsResult == nil || tlsResult.Status == StatusPass)
 
 	apiKeyCV := cfg["OPENAI_API_KEY"]
 	if networkOK && apiKeyCV.Present && apiKeyCV.RawValue() != "" {
-		pp := NewProviderProber(apiKeyCV.RawValue(), nil)
+		pp := NewProviderProber(apiKeyCV.RawValue(), nil, *timeout)
 		pr := pp.ProbeModels(ctx, baseURL)
 		providerResult = &pr
 	}

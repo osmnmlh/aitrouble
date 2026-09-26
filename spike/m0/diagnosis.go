@@ -164,6 +164,18 @@ func diagnoseProvider(r *ProbeResult) Diagnosis {
 			Evidence: r.Evidence,
 			FixHint:  "Verify OPENAI_BASE_URL points to an OpenAI-compatible API root (e.g., https://api.openai.com/v1).",
 		}
+	case "provider_invalid_response":
+		return Diagnosis{
+			Code:    "PROVIDER_INVALID_RESPONSE",
+			Summary: "The endpoint returned HTTP 200 but not the expected /models response shape.",
+			Candidates: []Candidate{{
+				Code:       "PROVIDER_INVALID_RESPONSE",
+				Confidence: "high",
+				Reason:     "The response body is not valid JSON or lacks the expected data array.",
+			}},
+			Evidence: r.Evidence,
+			FixHint:  "Verify OPENAI_BASE_URL points to a compatible endpoint. The current target returned 200 OK but wrong data.",
+		}
 	case "http_timeout":
 		return Diagnosis{
 			Code:    DiagNetworkTCPTimeout,

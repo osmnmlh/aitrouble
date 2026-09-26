@@ -73,7 +73,7 @@ func loadFixture(t *testing.T, name string) string {
 }
 
 func newTestProber(ts *httptest.Server) *ProviderProber {
-	return NewProviderProber(testAPIKey, ts.Client().Transport)
+	return NewProviderProber(testAPIKey, ts.Client().Transport, 5*time.Second)
 }
 
 // ── Test: 200 OK ──────────────────────────────────────────────────────────────
@@ -96,6 +96,26 @@ func TestProbeModels_OK(t *testing.T) {
 	}
 	if !strings.Contains(combined, "gpt-4o") {
 		t.Error("expected model ID 'gpt-4o' in evidence")
+	}
+}
+
+// ── Test: 200 OK (Invalid Shape) ──────────────────────────────────────────────
+
+func TestProbeModels_OK_InvalidShape(t *testing.T) {
+	// A JSON that doesn't match the expected {"data": [{"id": "..."}]} structure
+	body := `{"success": true, "message": "hello world"}`
+	ts := serverWith(http.StatusOK, body)
+	defer ts.Close()
+
+	p := newTestProber(ts)
+	r := p.ProbeModels(context.Background(), ts.URL)
+
+	assertStatus(t, r, StatusFail)
+	assertFailureKind(t, r, "provider_invalid_response")
+	
+	combined := strings.Join(r.Evidence, " ")
+	if !strings.Contains(combined, "not the expected /models response shape") {
+		t.Error("expected invalid shape message in evidence")
 	}
 }
 
@@ -164,9 +184,7 @@ func TestProbeModels_Timeout(t *testing.T) {
 	ts := serverWithDelay(5 * time.Second) // server responds slowly
 	defer ts.Close()
 
-	p := NewProviderProber(testAPIKey, ts.Client().Transport)
-	// Very short timeout to force a deadline
-	p.client.Timeout = 50 * time.Millisecond
+	p := NewProviderProber(testAPIKey, ts.Client().Transport, 50*time.Millisecond)
 
 	r := p.ProbeModels(context.Background(), ts.URL)
 
@@ -183,7 +201,7 @@ func TestProbeModels_NetworkError(t *testing.T) {
 	url := ts.URL
 	ts.Close() // close before we connect
 
-	p := NewProviderProber(testAPIKey, nil) // uses real transport
+	p := NewProviderProber(testAPIKey, nil, 5*time.Second) // uses real transport
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	r := p.ProbeModels(ctx, url)

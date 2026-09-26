@@ -38,6 +38,9 @@ This spike proves four assumptions required before building `aitrouble` v0.1:
 - ✅ Short-circuit correlation strategy (lower layers evaluated first)
 - ✅ Evidence is bounded (size limits on body reads, truncation on long IDs)
 - ✅ `FailureKind` is normalised (machine-readable) vs `Evidence` (human-readable)
+- ✅ Missing `.env` file is gracefully skipped, but actual filesystem errors (e.g. permission denied) are surfaced
+- ✅ HTTP 200 responses are validated against the expected JSON shape (not blindly accepted)
+- ✅ Provider probes are bounded by an explicit context deadline
 
 ## Decisions that should NOT be carried forward blindly
 
@@ -85,6 +88,9 @@ go run ./spike/m0/ --insecure
 - [x] 401/403/404/network/timeout are distinguishable
 - [x] Exact test key cannot appear in any result/output (assertNoSecret)
 - [x] Cross-layer correlation works for 4 required scenarios
+- [x] TLS failure (HTTPS) correctly short-circuits the provider probe
+- [x] Provider probe enforces context timeout correctly
+- [x] Provider probe validates HTTP 200 JSON shape instead of blindly accepting it
 - [x] All tests pass with `go test ./spike/m0/` and `go test -race ./spike/m0/`
 - [x] No new external dependencies (zero `go.sum` changes)
 - [x] No production `internal/` packages created

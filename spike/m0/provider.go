@@ -18,8 +18,9 @@ import (
 // field of a returned ProbeResult, in any formatted output, or in any error
 // string visible outside this package — even if the remote server echoes it.
 type ProviderProber struct {
-	client *http.Client
-	apiKey string // NEVER include in Evidence, errors, or formatted output
+	client  *http.Client
+	apiKey  string        // NEVER include in Evidence, errors, or formatted output
+	timeout time.Duration // bounding deadline for probes
 }
 
 // NewProviderProber creates a ProviderProber.
@@ -28,13 +29,14 @@ type ProviderProber struct {
 //
 // The CLI MUST NOT expose apiKey as a command-line flag.
 // apiKey must come from the resolved EffectiveConfig.
-func NewProviderProber(apiKey string, transport http.RoundTripper) *ProviderProber {
+func NewProviderProber(apiKey string, transport http.RoundTripper, timeout time.Duration) *ProviderProber {
 	if transport == nil {
 		transport = http.DefaultTransport
 	}
 	return &ProviderProber{
-		client: &http.Client{Transport: transport},
-		apiKey: apiKey,
+		client:  &http.Client{Transport: transport},
+		apiKey:  apiKey,
+		timeout: timeout,
 	}
 }
 
@@ -47,6 +49,12 @@ func NewProviderProber(apiKey string, transport http.RoundTripper) *ProviderProb
 //   - ProbeResult.Evidence (any element)
 //   - json.Marshal(result) output
 func (p *ProviderProber) ProbeModels(ctx context.Context, baseURL string) ProbeResult {
+	if p.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, p.timeout)
+		defer cancel()
+	}
+
 	endpoint, err := modelsEndpoint(baseURL)
 	if err != nil {
 		return ProbeResult{
@@ -130,24 +138,34 @@ func (p *ProviderProber) classify(status int, body string, latency time.Duration
 
 // handleOK extracts safe, bounded information from a 200 response.
 // Only model count and first 3 model IDs (truncated) are included.
+// It verifies the response shape is compatible with OpenAI /models.
 func (p *ProviderProber) handleOK(body string, latency time.Duration) ProbeResult {
-	ev := []string{"HTTP 200"}
+	// Verify it's a valid JSON object and contains a "data" array
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &raw); err != nil {
+		return p.invalidShapeResult(latency)
+	}
+	if _, ok := raw["data"]; !ok {
+		return p.invalidShapeResult(latency)
+	}
 
 	var modelsResp struct {
 		Data []struct {
 			ID string `json:"id"`
 		} `json:"data"`
 	}
-	if err := json.Unmarshal([]byte(body), &modelsResp); err == nil {
-		n := len(modelsResp.Data)
-		ev = append(ev, fmt.Sprintf("model count: %d", n))
-		limit := 3
-		if n < limit {
-			limit = n
-		}
-		for i := 0; i < limit; i++ {
-			ev = append(ev, "model: "+truncate(modelsResp.Data[i].ID, 64))
-		}
+	// We know it's valid JSON by now
+	_ = json.Unmarshal([]byte(body), &modelsResp)
+
+	ev := []string{"HTTP 200"}
+	n := len(modelsResp.Data)
+	ev = append(ev, fmt.Sprintf("model count: %d", n))
+	limit := 3
+	if n < limit {
+		limit = n
+	}
+	for i := 0; i < limit; i++ {
+		ev = append(ev, "model: "+truncate(modelsResp.Data[i].ID, 64))
 	}
 
 	return ProbeResult{
@@ -155,6 +173,19 @@ func (p *ProviderProber) handleOK(body string, latency time.Duration) ProbeResul
 		Status:   StatusPass,
 		Latency:  latency,
 		Evidence: ev,
+	}
+}
+
+func (p *ProviderProber) invalidShapeResult(latency time.Duration) ProbeResult {
+	return ProbeResult{
+		Name:        "Provider /models",
+		Status:      StatusFail,
+		FailureKind: "provider_invalid_response",
+		Latency:     latency,
+		Evidence: []string{
+			"HTTP 200",
+			"The endpoint returned HTTP 200 but not the expected /models response shape.",
+		},
 	}
 }
 

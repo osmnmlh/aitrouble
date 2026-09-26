@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -58,8 +59,12 @@ func loadDotEnv(envFile string) (map[string]string, error) {
 	}
 	f, err := os.Open(envFile)
 	if err != nil {
-		// Graceful skip: missing .env is not an error.
-		return map[string]string{}, nil //nolint:nilerr
+		if os.IsNotExist(err) {
+			// Graceful skip: missing .env is not an error.
+			return map[string]string{}, nil
+		}
+		// Any other error (e.g. permission denied) should be surfaced.
+		return nil, fmt.Errorf("failed to open .env file: %w", err)
 	}
 	defer f.Close()
 	return ParseDotEnv(f)

@@ -5,7 +5,7 @@
 **Find where your AI integration breaks.**
 
 [![CI](https://github.com/osmnmlh/aitrouble/actions/workflows/ci.yml/badge.svg)](https://github.com/osmnmlh/aitrouble/actions/workflows/ci.yml)
-[![Go Version](https://img.shields.io/badge/go-1.23%2B-00ADD8?logo=go)](https://go.dev/dl/)
+[![Go Version](https://img.shields.io/badge/go-1.27-00ADD8?logo=go)](https://go.dev/dl/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/osmnmlh/aitrouble)](https://goreportcard.com/report/github.com/osmnmlh/aitrouble)
 [![Release](https://img.shields.io/github/v/release/osmnmlh/aitrouble?color=blueviolet)](https://github.com/osmnmlh/aitrouble/releases)
@@ -20,7 +20,7 @@
 
 ---
 
-## Demo
+## Demo (Planned output)
 
 ```
 $ aitrouble doctor
@@ -61,7 +61,7 @@ $ aitrouble doctor
 |---|---|
 | 🏠 **Local-first** | Runs entirely on your machine. No remote agents, no SaaS, no accounts. |
 | 🔕 **Zero-telemetry** | No analytics, no crash reporting, no beaconing of any kind. |
-| 🔒 **Secret-safe** | API keys are redacted in all output and logs. No secrets leave your machine. |
+| 🔒 **Secret-safe** | Secrets are redacted from aitrouble output. Authenticated requests, when enabled, are sent only to the configured provider endpoint. |
 | 📦 **Single-binary** | One static binary. `go install` and you're done. No runtime dependencies. |
 | 📖 **Read-only** | `aitrouble` never writes to your config files. It only reads and probes. |
 
@@ -75,31 +75,24 @@ $ aitrouble doctor
 go install github.com/osmnmlh/aitrouble/cmd/aitrouble@latest
 ```
 
-### Install via script (Linux/macOS)
 
-```bash
-curl -sSfL https://raw.githubusercontent.com/osmnmlh/aitrouble/main/install.sh | sh
-```
 
 ### Run
 
 ```bash
-# Run full diagnostic in current directory
+# Check version (currently implemented)
+aitrouble --version
+
+# Run full diagnostic in current directory (Planned)
 aitrouble doctor
 
-# Target a specific .env file
+# Target a specific .env file (Planned)
 aitrouble doctor --env-file /path/to/.env
-
-# Run only network probes
-aitrouble doctor --only=network
-
-# Output machine-readable JSON
-aitrouble doctor --format=json
 ```
 
 ---
 
-## How It Works
+## How It Works (Planned Architecture)
 
 ```
 Your Project Directory
@@ -138,8 +131,8 @@ Your Project Directory
 
 We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
-- **Bug reports:** Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
-- **Feature requests:** Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md)
+- **Bug reports:** Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml)
+- **Feature requests:** Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.yml)
 - **Good first issues:** Look for the [`good first issue`](https://github.com/osmnmlh/aitrouble/labels/good%20first%20issue) label
 
 ### Development Setup
@@ -158,8 +151,8 @@ go build ./cmd/aitrouble
 
 | Milestone | Target | Status |
 |---|---|---|
-| **M0** – Spike Verification | Week 1 | 🔄 In Progress |
-| **M1** – Core Engine & Effective Config | Week 2 | ⏳ Planned |
+| **M0** – Spike Verification | Week 1 | ✅ Complete |
+| **M1** – Core Engine & Effective Config | Week 2 | 🔄 In Progress |
 | **M2** – Network & Provider Probes | Week 3 | ⏳ Planned |
 | **M3** – Local MCP & Doctor CLI v0.1 | Week 4 | ⏳ Planned |
 

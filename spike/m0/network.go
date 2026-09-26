@@ -26,9 +26,9 @@ type DNSLookupFunc func(ctx context.Context, host string) ([]string, error)
 // All external dependencies are injectable for hermetic testing.
 type NetworkProber struct {
 	Dial      DialContextFunc // injectable TCP dialer
-	DNSLookup DNSLookupFunc  // injectable DNS resolver
-	TLSConfig *tls.Config    // nil → secure defaults (hostname verified)
-	Timeout   time.Duration  // per-probe deadline
+	DNSLookup DNSLookupFunc   // injectable DNS resolver
+	TLSConfig *tls.Config     // nil → secure defaults (hostname verified)
+	Timeout   time.Duration   // per-probe deadline
 }
 
 // DefaultNetworkProber wires a NetworkProber to the real OS networking stack.

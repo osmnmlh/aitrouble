@@ -18,9 +18,9 @@
 
 `aitrouble` is a zero-dependency, read-only CLI. Run `aitrouble doctor` to get a deterministic, human-readable diagnosis of exactly where your AI integration fails — no guessing, no secrets leaked.
 
-**Implemented today:** Effective Configuration · DNS · TCP · TLS · OpenAI-compatible `/models` · `aitrouble doctor` · deterministic diagnosis · exit-code semantics
+**Implemented today:** Effective Configuration · DNS · TCP · TLS · OpenAI-compatible `/models` · `aitrouble doctor` · deterministic diagnosis · local MCP config discovery · exit-code semantics
 
-**Planned:** Local MCP probing · JSON output · TUI · LLM diagnosis · additional provider profiles
+**Planned:** MCP process probing (M5B) · JSON output · TUI · LLM diagnosis · additional provider profiles
 
 ---
 
@@ -32,18 +32,32 @@ aitrouble doctor
 Find where your AI integration breaks.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[1/3] Effective Configuration
+[1/4] Effective Configuration
   ✓  OPENAI_API_KEY     [REDACTED]                source: shell
   ✓  OPENAI_BASE_URL    https://api.openai.com/v1  source: .env
 
-[2/3] Network Probes
+[2/4] Network Probes
   ✓  DNS api.openai.com                           (12ms)
   ✓  TCP api.openai.com:443                       (23ms)
   ✓  TLS api.openai.com:443                       (41ms)
 
-[3/3] Provider Probe
+[3/4] Provider Probe
   ✗  OpenAI /models                               [auth_failure]
      Evidence: HTTP 401
+
+[4/4] Local MCP
+  ✓  Cursor
+     2 server(s) configured
+
+     filesystem
+       transport: stdio
+       command: npx
+       args: 2
+
+     github
+       transport: stdio
+       command: docker
+       args: 3
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  DIAGNOSIS  The chain breaks at: Provider › Authentication
@@ -161,7 +175,8 @@ go build ./cmd/aitrouble
 | **M2** – Network Probes | Week 3 | ✅ Complete |
 | **M3** – Provider Probe | Week 4 | ✅ Complete |
 | **M4** – Doctor + Deterministic Diagnosis | Week 5 | ✅ Complete |
-| **M5** – Local MCP | Week 5 | ⏳ Planned |
+| **M5A** – Local MCP Discovery | Week 6 | ✅ Complete |
+| **M5B** – Local MCP Process Probe | Week 7 | ⏳ Planned |
 
 ---
 

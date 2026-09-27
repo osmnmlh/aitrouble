@@ -66,6 +66,15 @@ Closes #<!-- Issue number -->
 
 ---
 
+## Documentation Checklist
+
+- [ ] Updated `docs/architecture.md` when architecture/domain behavior changed
+- [ ] Updated `docs/use-cases.md` when supported/planned usage changed
+- [ ] Updated `docs/requirements.md` when requirements/scope changed
+- [ ] No documentation claims functionality that is not implemented
+
+---
+
 ## Reviewer Notes
 
 <!-- Anything you want reviewers to pay special attention to. -->

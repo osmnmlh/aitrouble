@@ -21,7 +21,7 @@ go test -v -race ./...
 
 | Constraint | Rule |
 |---|---|
-| **Zero secrets in output** | API keys must always be redacted. Use `internal/redact` package. |
+| **Zero secrets in output** | Secrets must never appear in output, evidence, logs, or error messages. Use the existing safe-value/redaction behavior already implemented by the relevant package. |
 | **Read-only** | Never write to user files, env, or filesystem. |
 | **Zero telemetry** | No analytics, beaconing, or crash reporting. |
 | **No new deps without discussion** | Open an issue first for any `go.mod` addition. |
@@ -61,6 +61,16 @@ test(provider): add fixture for 401 auth failure
 - Prefer `errors.New` / `fmt.Errorf` over `panic`.
 - Keep functions small and testable.
 - Document all exported symbols.
+
+## Documentation
+
+Documentation lives in `docs/`.
+Architecture/domain changes should update the corresponding documentation in the same PR.
+
+Please refer to:
+- [Architecture](docs/architecture.md)
+- [Use Cases](docs/use-cases.md)
+- [Requirements](docs/requirements.md)
 
 ## Security Reporting
 

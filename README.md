@@ -16,7 +16,9 @@
 
 ## Why is your AI integration down? Stop guessing.
 
-`aitrouble` is a zero-dependency, read-only CLI that reads your project's config layers, builds the **Effective Configuration** hierarchy, then probes every link in the chain—DNS → TCP → TLS → HTTP → Provider API → MCP—and tells you **exactly** which link is broken, with deterministic evidence.
+`aitrouble` is a zero-dependency, read-only CLI tool. Currently, the core engine supports reading your project's config layers to build the **Effective Configuration** hierarchy, and running deterministic network (DNS → TCP → TLS) and provider API probes.
+
+We are actively building toward the full `aitrouble doctor` experience, which will automatically orchestrate these probes and correlate failures across the entire chain (including local MCP processes) to tell you **exactly** which link is broken.
 
 ---
 
@@ -29,7 +31,7 @@ $ aitrouble doctor
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [1/4] Effective Configuration
-  ✓  Source: shell env   OPENAI_API_KEY  = sk-•••••••••••••••••••oXyZ
+  ✓  Source: shell env   OPENAI_API_KEY  = [REDACTED]
   ✓  Source: .env file   OPENAI_BASE_URL = https://api.openai.com/v1
   ⚠  Source: .env file   OPENAI_TIMEOUT  = (not set, using default 30s)
 
@@ -127,6 +129,16 @@ Your Project Directory
 
 ---
 
+---
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Use Cases](docs/use-cases.md)
+- [Requirements](docs/requirements.md)
+
+---
+
 ## Contributing
 
 We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
@@ -154,8 +166,8 @@ go build ./cmd/aitrouble
 | **M0** – Spike Verification | Week 1 | ✅ Complete |
 | **M1** – Core Engine & Effective Config | Week 2 | ✅ Complete |
 | **M2** – Network Probes | Week 3 | ✅ Complete |
-| **M3** – Provider Probe | Week 4 | 🔄 In Progress |
-| **M4** – Local MCP & Doctor CLI v0.1 | Week 4 | ⏳ Planned |
+| **M3** – Provider Probe | Week 4 | ✅ Complete |
+| **M4** – Doctor + MCP | Week 5 | ⏳ Planned |
 
 ---
 

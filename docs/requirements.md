@@ -19,7 +19,8 @@ To provide a definitively reliable, single-binary, read-only diagnostic tool tha
 | **FR-09** | Human-readable diagnostic output | Status: Implemented |
 | **FR-10** | Cross-layer diagnosis | Status: Implemented |
 | **FR-11** | CLI doctor command | Status: Implemented |
-| **FR-12** | MCP probing | Status: Planned |
+| **FR-12** | MCP config discovery (static) | Status: Implemented |
+| **FR-12B** | MCP process probing (M5B) | Status: Planned |
 | **FR-13** | JSON output | Status: Planned |
 | **FR-14** | Exit-code semantics | Status: Implemented |
 
@@ -62,7 +63,8 @@ To provide a definitively reliable, single-binary, read-only diagnostic tool tha
 | Doctor CLI                    | ✅ Implemented |
 | Human diagnostic report       | ✅ Implemented |
 | Exit-code semantics           | ✅ Implemented |
-| MCP                           | ⏳ Planned     |
+| Local MCP config discovery    | ✅ Implemented |
+| MCP process probing (M5B)     | ⏳ Planned     |
 | JSON output                   | ⏳ Planned     |
 | TUI                           | ⏳ Planned     |
 | LLM diagnosis                 | ⏳ Planned     |

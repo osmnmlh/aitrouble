@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/osmnmlh/aitrouble/internal/core"
 	"github.com/osmnmlh/aitrouble/internal/diagnosis"
+	"github.com/osmnmlh/aitrouble/internal/mcp"
 	"github.com/osmnmlh/aitrouble/internal/network"
 	"github.com/osmnmlh/aitrouble/internal/provider"
 )
@@ -45,7 +47,7 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 	fmt.Fprintln(stdout, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	// 1. Resolve Effective Configuration
-	fmt.Fprintln(stdout, "\n[1/3] Effective Configuration")
+	fmt.Fprintln(stdout, "\n[1/4] Effective Configuration")
 	cfg, err := core.ResolveEffectiveConfig(envFile)
 	if err != nil {
 		fmt.Fprintf(stderr, "  ✗  Failed to resolve configuration: %v\n", err)
@@ -62,7 +64,7 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 	baseURL := baseURLVal.String()
 
 	// 2. Network Probes
-	fmt.Fprintln(stdout, "\n[2/3] Network Probes")
+	fmt.Fprintln(stdout, "\n[2/4] Network Probes")
 	netResults := d.net.ProbeTarget(ctx, baseURL)
 	printResults(stdout, netResults)
 
@@ -76,7 +78,7 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 	}
 
 	// 3. Provider Probe
-	fmt.Fprintln(stdout, "\n[3/3] Provider Probe")
+	fmt.Fprintln(stdout, "\n[3/4] Provider Probe")
 	var provResult core.ProbeResult
 
 	if networkFailed {
@@ -91,9 +93,25 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 		printResults(stdout, []core.ProbeResult{provResult})
 	}
 
-	// 4. Correlate Results
+	// 4. Local MCP Discovery
+	fmt.Fprintln(stdout, "\n[4/4] Local MCP")
+	cwd, _ := os.Getwd()
+	home, _ := os.UserHomeDir()
+	mcpResult := mcp.DiscoverFromContext(home, cwd)
+	mcpFailed := printMCPSection(stdout, mcpResult)
+
+	// 5. Correlate Results
 	allResults := append(netResults, provResult)
 	diag := diagnosis.Correlate(allResults)
+
+	// MCP config failure is a separate diagnostic concern
+	if mcpFailed && diag.FailingLayer == "None" {
+		diag = core.Diagnosis{
+			FailingLayer: "MCP › Configuration",
+			Summary:      "An MCP configuration file was found but could not be parsed.",
+			FixHint:      "Check the MCP configuration file for JSON syntax errors.",
+		}
+	}
 
 	fmt.Fprintln(stdout, "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	if diag.FailingLayer == "None" {
@@ -149,4 +167,45 @@ func printResults(w io.Writer, results []core.ProbeResult) {
 			}
 		}
 	}
+}
+
+// printMCPSection renders the Local MCP discovery results safely.
+// Returns true if a config was found but is invalid (failure condition).
+func printMCPSection(w io.Writer, result mcp.DiscoveryResult) bool {
+	if !result.HasAny() {
+		fmt.Fprintln(w, "  –  No supported MCP configuration detected")
+		return false
+	}
+
+	failed := false
+	for _, src := range result.Sources {
+		switch src.Status {
+		case mcp.SourceStatusFound:
+			fmt.Fprintf(w, "  ✓  %s\n", src.Name)
+			fmt.Fprintf(w, "     %d server(s) configured\n", len(src.Servers))
+			for _, srv := range src.Servers {
+				fmt.Fprintf(w, "\n     %s\n", srv.Name)
+				fmt.Fprintf(w, "       transport: %s\n", srv.Transport)
+				if srv.Command != "" {
+					fmt.Fprintf(w, "       command: %s\n", srv.Command)
+				}
+				if srv.SafeURL != "" {
+					fmt.Fprintf(w, "       url: %s\n", srv.SafeURL)
+				}
+				if srv.ArgCount > 0 {
+					fmt.Fprintf(w, "       args: %d\n", srv.ArgCount)
+				}
+				if srv.EnvCount > 0 {
+					fmt.Fprintf(w, "       env: %d variable(s) configured\n", srv.EnvCount)
+				}
+			}
+		case mcp.SourceStatusInvalid:
+			failed = true
+			fmt.Fprintf(w, "  ✗  %s\n", src.Name)
+			if src.Detail != "" {
+				fmt.Fprintf(w, "     %s\n", src.Detail)
+			}
+		}
+	}
+	return failed
 }

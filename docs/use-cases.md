@@ -16,7 +16,7 @@ The intended users of the tool include:
 
 ## 3. Current Supported Use Cases
 
-The current system supports the underlying component-level checks for the following behaviors. *(Note: an end-to-end CLI `doctor` experience is not yet implemented.)*
+The current system supports an end-to-end CLI `doctor` experience that executes these component-level checks and aggregates the results into a final diagnosis.
 
 ### UC-01 — Effective configuration resolution
 Safely reading the API key and Base URL to determine whether to use:
@@ -52,10 +52,6 @@ If the developer specifies a local target (e.g., `http://localhost:...`), `aitro
 ## 4. Planned Use Cases
 
 *These use cases are planned but not yet implemented:*
-- one-command doctor workflow
-- cross-layer diagnosis
-- fix hints
-- CLI exit codes
 - local MCP process health checks
 - MCP configuration discovery
 - JSON output

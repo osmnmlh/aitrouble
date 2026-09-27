@@ -16,12 +16,12 @@ To provide a definitively reliable, single-binary, read-only diagnostic tool tha
 | **FR-06** | Provider `/models` probing | Status: Implemented |
 | **FR-07** | Probe result normalization | Status: Implemented |
 | **FR-08** | Short-circuit behavior | Status: Implemented |
-| **FR-09** | Human-readable diagnostic output | Status: Planned |
-| **FR-10** | Cross-layer diagnosis | Status: Planned |
-| **FR-11** | CLI doctor command | Status: Planned |
+| **FR-09** | Human-readable diagnostic output | Status: Implemented |
+| **FR-10** | Cross-layer diagnosis | Status: Implemented |
+| **FR-11** | CLI doctor command | Status: Implemented |
 | **FR-12** | MCP probing | Status: Planned |
 | **FR-13** | JSON output | Status: Planned |
-| **FR-14** | Exit-code semantics | Status: Planned |
+| **FR-14** | Exit-code semantics | Status: Implemented |
 
 ## 3. Non-Functional Requirements
 
@@ -58,9 +58,10 @@ To provide a definitively reliable, single-binary, read-only diagnostic tool tha
 | TLS probe                     | ✅ Implemented |
 | OpenAI-compatible `/models`     | ✅ Implemented |
 | Secret-safe provider handling | ✅ Implemented |
-| Production correlation        | ⏳ Planned     |
-| Doctor CLI                    | ⏳ Planned     |
-| Human diagnostic report       | ⏳ Planned     |
+| Production correlation        | ✅ Implemented |
+| Doctor CLI                    | ✅ Implemented |
+| Human diagnostic report       | ✅ Implemented |
+| Exit-code semantics           | ✅ Implemented |
 | MCP                           | ⏳ Planned     |
 | JSON output                   | ⏳ Planned     |
 | TUI                           | ⏳ Planned     |

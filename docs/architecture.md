@@ -6,23 +6,30 @@ aitrouble is a read-only, single-binary CLI tool designed to definitively diagno
 
 ## 2. Current System
 
-The current system implements the core deterministic configuration resolution and the bottom-up network probing sequence (DNS, TCP, TLS) followed by a provider-level `/models` probe. 
+The current system implements the core deterministic configuration resolution, the bottom-up network probing sequence (DNS, TCP, TLS), and the provider-level `/models` probe. 
 
-The `doctor` CLI command, correlation engine, and human-readable output formatting are not yet implemented.
+The `doctor` CLI command orchestrates these probes and aggregates failures using a deterministic correlation engine, presenting a human-readable diagnosis.
+
+MCP discovery and JSON output are not yet implemented.
 
 ## 3. Production Package Structure
 
 The current production packages are strictly decoupled from the CLI edge and do not use third-party dependencies:
 
-- `internal/core`: Holds common domain types (`ProbeResult`, `EffectiveConfig`, `ConfigValue`) and local configuration resolution rules.
+- `internal/core`: Holds common domain types (`ProbeResult`, `EffectiveConfig`, `ConfigValue`, `Diagnosis`) and local configuration resolution rules.
 - `internal/network`: Executes deterministic DNS, TCP, and TLS probes. 
 - `internal/provider`: Executes safe HTTP probes against OpenAI-compatible `/models` endpoints, classifying status codes without exposing raw response bodies or credentials.
+- `internal/diagnosis`: Correlates probe results into deterministic layer failures.
+- `internal/doctor`: Orchestrates the CLI workflow and prints safe human-readable diagnostic output.
 
 ## 4. Current Data Flow
 
 ```mermaid
 flowchart TD
 
+    U["Developer"]
+    CLI["aitrouble doctor"]
+    
     Config["EffectiveConfig"]
     Core["core.ProbeResult"]
 
@@ -33,6 +40,12 @@ flowchart TD
 
     Provider["ProviderProber"]
     Models["GET /models"]
+    
+    Engine["Deterministic Correlator"]
+    Output["Human-readable Report"]
+
+    U --> CLI
+    CLI --> Config
 
     Config --> Network
     Config --> Provider
@@ -44,6 +57,9 @@ flowchart TD
     Network --> Core
     Provider --> Models
     Models --> Core
+    
+    Core --> Engine
+    Engine --> Output
 ```
 
 ## 5. Core Domain Model
@@ -225,8 +241,6 @@ To ensure safety against malicious API endpoints, if the remote server echoes th
 
 ## 10. Current Limitations
 
-- `doctor` CLI is not implemented.
-- Production correlation/orchestration is not implemented.
 - MCP probing is not implemented.
 - JSON output is not implemented.
 - TUI is not implemented.
@@ -241,42 +255,12 @@ To ensure safety against malicious API endpoints, if the remote server echoes th
 ```mermaid
 flowchart TD
 
-    U["Developer"]
-    CLI["aitrouble doctor"]
-
-    CFG["Effective Configuration"]
-
-    NET["Network Probes"]
-    DNS["DNS"]
-    TCP["TCP"]
-    TLS["TLS"]
-
-    PROVIDER["Provider Probe"]
-    MODELS["/models"]
-
     ENGINE["Correlation / Diagnosis"]
     OUTPUT["Human-readable Output"]
 
     MCP["MCP Probe"]
 
-    U --> CLI
-    CLI --> CFG
-
-    CFG --> NET
-    NET --> DNS
-    DNS --> TCP
-    TCP --> TLS
-
-    CFG --> PROVIDER
-    PROVIDER --> MODELS
-
-    NET --> ENGINE
-    PROVIDER --> ENGINE
     MCP --> ENGINE
-
-    CFG --> MCP
-
-    ENGINE --> OUTPUT
 ```
 
 **Planned / not implemented**
@@ -284,40 +268,11 @@ flowchart TD
 ```mermaid
 classDiagram
 
-class Doctor {
-    +Run(ctx, options) Report
-}
-
-class EffectiveConfig
-
-class NetworkProber {
-    +ProbeTarget()
-}
-
-class ProviderProber {
-    +ProbeModels()
-}
-
-class Correlator {
-    +Diagnose()
-}
-
-class Report
-
 class MCPProber
-
-class ProbeResult
 
 class Diagnosis
 
-Doctor --> EffectiveConfig
-Doctor --> NetworkProber
-Doctor --> ProviderProber
-Doctor --> MCPProber
-Doctor --> Correlator
-Correlator --> ProbeResult
-Correlator --> Diagnosis
-Doctor --> Report
+MCPProber --> Diagnosis
 ```
 
 ## 12. Design Principles

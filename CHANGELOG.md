@@ -14,5 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - M1 — production core and Effective Configuration
 - M2 — production DNS/TCP/TLS network probes
 - M3 — production OpenAI-compatible /models provider probe
+- M4 — doctor CLI, orchestration, and deterministic diagnosis
 
 [Unreleased]: https://github.com/osmnmlh/aitrouble/compare/HEAD...HEAD

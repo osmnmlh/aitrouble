@@ -22,7 +22,7 @@ We are actively building toward the full `aitrouble doctor` experience, which wi
 
 ---
 
-## Demo (Planned output)
+## Demo
 
 ```
 $ aitrouble doctor
@@ -49,9 +49,9 @@ $ aitrouble doctor
   –  No MCP server config detected (skipped)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- DIAGNOSIS  The chain breaks at: Provider › invalid_api_key
- FIX        Regenerate your API key at https://platform.openai.com/api-keys
-            and update OPENAI_API_KEY in your shell or .env file.
+ DIAGNOSIS  The chain breaks at: Provider › Authentication
+ SUMMARY    The network path succeeded, but the provider rejected authentication.
+ FIX        Check the active OPENAI_API_KEY in your shell or .env file.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -82,19 +82,19 @@ go install github.com/osmnmlh/aitrouble/cmd/aitrouble@latest
 ### Run
 
 ```bash
-# Check version (currently implemented)
+# Check version
 aitrouble --version
 
-# Run full diagnostic in current directory (Planned)
+# Run full diagnostic in current directory
 aitrouble doctor
 
-# Target a specific .env file (Planned)
+# Target a specific .env file
 aitrouble doctor --env-file /path/to/.env
 ```
 
 ---
 
-## How It Works (Planned Architecture)
+## How It Works
 
 ```
 Your Project Directory
@@ -167,7 +167,8 @@ go build ./cmd/aitrouble
 | **M1** – Core Engine & Effective Config | Week 2 | ✅ Complete |
 | **M2** – Network Probes | Week 3 | ✅ Complete |
 | **M3** – Provider Probe | Week 4 | ✅ Complete |
-| **M4** – Doctor + MCP | Week 5 | ⏳ Planned |
+| **M4** – Doctor + Deterministic Diagnosis | Week 5 | ✅ Complete |
+| **M5** – Local MCP | Week 5 | ⏳ Planned |
 
 ---
 

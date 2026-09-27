@@ -3,50 +3,65 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"time"
+
+	"github.com/osmnmlh/aitrouble/internal/doctor"
 )
 
 // version is injected at build time via -ldflags.
 var version = "dev"
 
 func main() {
-	versionFlag := flag.Bool("version", false, "print version and exit")
-	flag.Parse()
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
 
-	if *versionFlag {
-		fmt.Printf("aitrouble %s\n", version)
-		os.Exit(0)
+func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		printUsage(stdout)
+		return 2
 	}
 
-	// Subcommand dispatch — full implementation coming in M1.
-	args := flag.Args()
-	if len(args) == 0 {
-		printUsage()
-		os.Exit(1)
+	if args[0] == "--version" || args[0] == "-v" {
+		fmt.Fprintf(stdout, "aitrouble %s\n", version)
+		return 0
 	}
 
 	switch args[0] {
 	case "doctor":
-		fmt.Println("aitrouble doctor — not yet implemented. Coming in M3.")
-		os.Exit(0)
+		fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		envFile := fs.String("env-file", "", "Path to custom .env file")
+
+		// Parse ignoring errors as fs handles printing them when ContinueOnError is set.
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+
+		return doctor.Run(ctx, *envFile, stdout, stderr)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
-		printUsage()
-		os.Exit(1)
+		fmt.Fprintf(stderr, "unknown command: %s\n", args[0])
+		printUsage(stderr)
+		return 2
 	}
 }
 
-func printUsage() {
-	fmt.Println(`aitrouble — Find where your AI integration breaks.
+func printUsage(w io.Writer) {
+	fmt.Fprintln(w, `aitrouble — Find where your AI integration breaks.
 
 Usage:
-  aitrouble doctor   [--env-file FILE] [--only LAYER] [--format FORMAT]
+  aitrouble doctor [--env-file FILE]
   aitrouble --version
 
 Flags:
   --version   Print version and exit
 
-Run 'aitrouble <command> --help' for command-specific flags.`)
+Run 'aitrouble doctor --help' for command-specific flags.`)
 }

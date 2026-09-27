@@ -12,9 +12,34 @@ import (
 	"github.com/osmnmlh/aitrouble/internal/provider"
 )
 
-// Run orchestrates the doctor command and writes human-readable output to stdout/stderr.
-// It returns an exit code (0 for pass, 1 for fail, 2 for usage error).
+// NetworkProber is the interface satisfied by network.NetworkProber.
+type NetworkProber interface {
+	ProbeTarget(ctx context.Context, baseURL string) []core.ProbeResult
+}
+
+// ProviderProber is the interface satisfied by provider.ProviderProber.
+type ProviderProber interface {
+	ProbeModels(ctx context.Context, cfg core.EffectiveConfig) core.ProbeResult
+}
+
+// deps holds injectable dependencies for testability.
+type deps struct {
+	net  NetworkProber
+	prov ProviderProber
+}
+
+// Run orchestrates the doctor command using real production probers.
+// It returns an exit code (0 for pass/healthy, 1 for failure detected, 2 for usage error).
 func Run(ctx context.Context, envFile string, stdout, stderr io.Writer) int {
+	d := deps{
+		net:  network.NewDefaultProber(10 * time.Second),
+		prov: provider.NewProviderProber(nil, 30*time.Second),
+	}
+	return runWithDeps(ctx, envFile, stdout, stderr, d)
+}
+
+// runWithDeps is the testable implementation — deps are injected.
+func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, d deps) int {
 	fmt.Fprintln(stdout, "aitrouble doctor")
 	fmt.Fprintln(stdout, "Find where your AI integration breaks.")
 	fmt.Fprintln(stdout, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -38,9 +63,7 @@ func Run(ctx context.Context, envFile string, stdout, stderr io.Writer) int {
 
 	// 2. Network Probes
 	fmt.Fprintln(stdout, "\n[2/3] Network Probes")
-	netProber := network.NewDefaultProber(10 * time.Second)
-	netResults := netProber.ProbeTarget(ctx, baseURL)
-
+	netResults := d.net.ProbeTarget(ctx, baseURL)
 	printResults(stdout, netResults)
 
 	// Check if network failed
@@ -64,9 +87,7 @@ func Run(ctx context.Context, envFile string, stdout, stderr io.Writer) int {
 		}
 		printResults(stdout, []core.ProbeResult{provResult})
 	} else {
-		// Only probe provider if network layer passes
-		provProber := provider.NewProviderProber(nil, 30*time.Second)
-		provResult = provProber.ProbeModels(ctx, cfg)
+		provResult = d.prov.ProbeModels(ctx, cfg)
 		printResults(stdout, []core.ProbeResult{provResult})
 	}
 

@@ -16,9 +16,11 @@
 
 ## Why is your AI integration down? Stop guessing.
 
-`aitrouble` is a zero-dependency, read-only CLI tool. Currently, the core engine supports reading your project's config layers to build the **Effective Configuration** hierarchy, and running deterministic network (DNS → TCP → TLS) and provider API probes.
+`aitrouble` is a zero-dependency, read-only CLI. Run `aitrouble doctor` to get a deterministic, human-readable diagnosis of exactly where your AI integration fails — no guessing, no secrets leaked.
 
-We are actively building toward the full `aitrouble doctor` experience, which will automatically orchestrate these probes and correlate failures across the entire chain (including local MCP processes) to tell you **exactly** which link is broken.
+**Implemented today:** Effective Configuration · DNS · TCP · TLS · OpenAI-compatible `/models` · `aitrouble doctor` · deterministic diagnosis · exit-code semantics
+
+**Planned:** Local MCP probing · JSON output · TUI · LLM diagnosis · additional provider profiles
 
 ---
 
@@ -26,27 +28,22 @@ We are actively building toward the full `aitrouble doctor` experience, which wi
 
 ```
 $ aitrouble doctor
-
- aitrouble v0.1.0  •  Find where your AI integration breaks
+aitrouble doctor
+Find where your AI integration breaks.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-[1/4] Effective Configuration
-  ✓  Source: shell env   OPENAI_API_KEY  = [REDACTED]
-  ✓  Source: .env file   OPENAI_BASE_URL = https://api.openai.com/v1
-  ⚠  Source: .env file   OPENAI_TIMEOUT  = (not set, using default 30s)
+[1/3] Effective Configuration
+  ✓  OPENAI_API_KEY     [REDACTED]                source: shell
+  ✓  OPENAI_BASE_URL    https://api.openai.com/v1  source: .env
 
-[2/4] Network Probes
-  ✓  DNS   api.openai.com → 104.18.7.192  (12ms)
-  ✓  TCP   104.18.7.192:443               (23ms)
-  ✓  TLS   CN=openai.com  TLS 1.3         (41ms)
-  ✗  HTTP  POST /v1/chat/completions      → 401 Unauthorized
+[2/3] Network Probes
+  ✓  DNS api.openai.com                           (12ms)
+  ✓  TCP api.openai.com:443                       (23ms)
+  ✓  TLS api.openai.com:443                       (41ms)
 
-[3/4] Provider Probe
-  ✗  OpenAI /v1/models  → 401 Unauthorized
-     Evidence: {"error":{"code":"invalid_api_key","type":"..."}}
-
-[4/4] Local MCP
-  –  No MCP server config detected (skipped)
+[3/3] Provider Probe
+  ✗  OpenAI /models                               [auth_failure]
+     Evidence: HTTP 401
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  DIAGNOSIS  The chain breaks at: Provider › Authentication
@@ -101,31 +98,27 @@ Your Project Directory
         │
         ▼
 ┌───────────────────────────────┐
-│  1. Config Engine             │  Reads shell env, .env, project config
-│     → Effective Configuration │  Builds precedence-aware merged config
+│  1. Config Engine             │  shell env → .env → default
+│     → Effective Configuration │  Secrets are never printed
 └──────────────┬────────────────┘
                │
                ▼
 ┌───────────────────────────────┐
-│  2. Network Probes            │  DNS → TCP → TLS → HTTP
-│     → Pass / Fail + Evidence  │  Deterministic, timeout-bounded
+│  2. Network Probes            │  DNS → TCP → TLS (HTTPS)
+│     → Pass / Fail + Evidence  │  Short-circuit on first failure
 └──────────────┬────────────────┘
                │
                ▼
 ┌───────────────────────────────┐
-│  3. Provider Probe            │  OpenAI / OpenAI-compatible /v1/models
-│     → Pass / Fail + Evidence  │  Auth check without sensitive logging
+│  3. Provider Probe            │  OpenAI-compatible GET /models
+│     → Pass / Fail + Evidence  │  Skipped if network already failed
 └──────────────┬────────────────┘
                │
                ▼
-┌───────────────────────────────┐
-│  4. MCP Process Probe         │  Local MCP server health check
-│     → Pass / Skip + Evidence  │  Detects stdio / HTTP MCP servers
-└──────────────┬────────────────┘
-               │
-               ▼
-        DIAGNOSIS + FIX HINT
+        DETERMINISTIC DIAGNOSIS + FIX HINT
 ```
+
+> **Planned (M5):** Local MCP process probing will extend the chain above.
 
 ---
 

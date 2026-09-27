@@ -37,8 +37,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fs.SetOutput(stderr)
 		envFile := fs.String("env-file", "", "Path to custom .env file")
 
-		// Parse ignoring errors as fs handles printing them when ContinueOnError is set.
 		if err := fs.Parse(args[1:]); err != nil {
+			if err == flag.ErrHelp {
+				return 0
+			}
 			return 2
 		}
 

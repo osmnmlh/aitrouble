@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/osmnmlh/aitrouble/internal/core"
@@ -94,7 +95,9 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 
 	// 4. Local MCP Discovery
 	fmt.Fprintln(stdout, "\n[4/4] Local MCP")
-	mcpResult := mcp.Discover()
+	cwd, _ := os.Getwd()
+	home, _ := os.UserHomeDir()
+	mcpResult := mcp.DiscoverFromContext(home, cwd)
 	mcpFailed := printMCPSection(stdout, mcpResult)
 
 	// 5. Correlate Results
@@ -186,8 +189,8 @@ func printMCPSection(w io.Writer, result mcp.DiscoveryResult) bool {
 				if srv.Command != "" {
 					fmt.Fprintf(w, "       command: %s\n", srv.Command)
 				}
-				if srv.URL != "" {
-					fmt.Fprintf(w, "       url: %s\n", srv.URL)
+				if srv.SafeURL != "" {
+					fmt.Fprintf(w, "       url: %s\n", srv.SafeURL)
 				}
 				if srv.ArgCount > 0 {
 					fmt.Fprintf(w, "       args: %d\n", srv.ArgCount)

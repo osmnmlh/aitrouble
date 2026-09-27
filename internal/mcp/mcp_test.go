@@ -17,6 +17,11 @@ func parseString(t *testing.T, s string) ([]ServerConfig, error) {
 	return ParseConfigReader(strings.NewReader(s))
 }
 
+func parseVSCodeString(t *testing.T, s string) ([]ServerConfig, error) {
+	t.Helper()
+	return ParseVSCodeReader(strings.NewReader(s))
+}
+
 // --- 1. No config (empty mcpServers) ---
 
 func TestParse_EmptyServers(t *testing.T) {
@@ -112,7 +117,7 @@ func TestParse_MissingCommand(t *testing.T) {
 	}
 }
 
-// --- 8. HTTP-style config ---
+// --- 8. HTTP-style config (mcpServers format) ---
 
 func TestParse_HTTPServer(t *testing.T) {
 	json := configJSON(`{"myserver": {"url": "http://localhost:3000/mcp"}}`)
@@ -127,8 +132,8 @@ func TestParse_HTTPServer(t *testing.T) {
 	if s.Transport != TransportHTTP {
 		t.Errorf("expected http transport, got %q", s.Transport)
 	}
-	if s.URL != "http://localhost:3000/mcp" {
-		t.Errorf("unexpected URL: %q", s.URL)
+	if s.SafeURL != "http://localhost:3000/mcp" {
+		t.Errorf("unexpected URL: %q", s.SafeURL)
 	}
 	if s.Command != "" {
 		t.Errorf("command should be empty for http server, got %q", s.Command)
@@ -144,16 +149,18 @@ func TestParse_NullMCPServers(t *testing.T) {
 	}
 }
 
-// --- 10. Multiple config sources (DiscoverFromHome) ---
+// --- 10. Multiple config sources (DiscoverFromContext) ---
 
-func TestDiscoverFromHome_Multiple(t *testing.T) {
+func TestDiscoverFromContext_Multiple(t *testing.T) {
 	home := t.TempDir()
+	cwd := t.TempDir()
 
-	// Create two different config files
+	// Cursor: home/.cursor/mcp.json
 	writeConfig(t, home, ".cursor", "mcp.json", configJSON(`{"s1":{"command":"npx"}}`))
-	writeConfig(t, home, ".vscode", "mcp.json", configJSON(`{"s2":{"command":"node"}}`))
+	// VS Code workspace: cwd/.vscode/mcp.json  (VS Code format uses "servers")
+	writeConfig(t, cwd, ".vscode", "mcp.json", `{"servers":{"s2":{"command":"node"}}}`)
 
-	result := DiscoverFromHome(home)
+	result := DiscoverFromContext(home, cwd)
 
 	found := 0
 	for _, src := range result.Sources {
@@ -162,7 +169,7 @@ func TestDiscoverFromHome_Multiple(t *testing.T) {
 		}
 	}
 	if found < 2 {
-		t.Errorf("expected at least 2 found sources, got %d", found)
+		t.Errorf("expected at least 2 found sources, got %d (sources: %+v)", found, result.Sources)
 	}
 	if result.TotalServers() < 2 {
 		t.Errorf("expected at least 2 total servers, got %d", result.TotalServers())
@@ -192,13 +199,12 @@ func TestParse_EnvSecretsNotExposed(t *testing.T) {
 	}
 
 	s := servers[0]
-	// EnvCount should reflect the number, but values must not be stored or printable
 	if s.EnvCount != 3 {
 		t.Errorf("expected EnvCount=3, got %d", s.EnvCount)
 	}
 
 	// Verify secret values are not in the struct string representation
-	serverStr := s.Name + s.Command + s.URL + string(s.Transport)
+	serverStr := s.Name + s.Command + s.SafeURL + string(s.Transport)
 	if strings.Contains(serverStr, "super-secret-value") {
 		t.Error("secret value leaked into ServerConfig")
 	}
@@ -209,12 +215,13 @@ func TestParse_EnvSecretsNotExposed(t *testing.T) {
 
 // --- 12. No config files = no sources in result (not error) ---
 
-func TestDiscoverFromHome_NoFiles(t *testing.T) {
-	home := t.TempDir() // empty temp dir
-	result := DiscoverFromHome(home)
+func TestDiscoverFromContext_NoFiles(t *testing.T) {
+	home := t.TempDir()
+	cwd := t.TempDir()
+	result := DiscoverFromContext(home, cwd)
 
 	if result.HasAny() {
-		t.Error("expected no discovered sources in empty home")
+		t.Error("expected no discovered sources in empty home/cwd")
 	}
 	if result.HasFailure() {
 		t.Error("expected no failures when no files exist")
@@ -223,11 +230,12 @@ func TestDiscoverFromHome_NoFiles(t *testing.T) {
 
 // --- 13. Malformed config file in discovered path ---
 
-func TestDiscoverFromHome_MalformedFile(t *testing.T) {
+func TestDiscoverFromContext_MalformedFile(t *testing.T) {
 	home := t.TempDir()
+	cwd := t.TempDir()
 	writeConfig(t, home, ".cursor", "mcp.json", `not json at all`)
 
-	result := DiscoverFromHome(home)
+	result := DiscoverFromContext(home, cwd)
 	if !result.HasAny() {
 		t.Error("expected source to be found (even if invalid)")
 	}
@@ -246,6 +254,124 @@ func TestParse_EnvCount(t *testing.T) {
 	}
 	if servers[0].EnvCount != 5 {
 		t.Errorf("expected EnvCount=5, got %d", servers[0].EnvCount)
+	}
+}
+
+// --- 15. VS Code "servers" format ---
+
+func TestParse_VSCodeServersFormat(t *testing.T) {
+	json := `{"servers":{"myserver":{"command":"uvx","args":["mcp-server-fetch"]}}}`
+	servers, err := parseVSCodeString(t, json)
+	if err != nil {
+		t.Fatalf("unexpected error parsing VS Code format: %v", err)
+	}
+	if len(servers) != 1 {
+		t.Fatalf("expected 1 server, got %d", len(servers))
+	}
+	s := servers[0]
+	if s.Name != "myserver" {
+		t.Errorf("expected name 'myserver', got %q", s.Name)
+	}
+	if s.Transport != TransportStdio {
+		t.Errorf("expected stdio, got %q", s.Transport)
+	}
+	if s.Command != "uvx" {
+		t.Errorf("expected command 'uvx', got %q", s.Command)
+	}
+	if s.ArgCount != 1 {
+		t.Errorf("expected ArgCount=1, got %d", s.ArgCount)
+	}
+}
+
+// --- 16. Portable .mcp.json format (mcpServers key) ---
+
+func TestDiscoverFromContext_PortableMCPJson(t *testing.T) {
+	home := t.TempDir()
+	cwd := t.TempDir()
+
+	// Write .mcp.json in cwd with mcpServers format
+	content := configJSON(`{"portable-server":{"command":"node","args":["server.js"]}}`)
+	if err := os.WriteFile(cwd+"/.mcp.json", []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	result := DiscoverFromContext(home, cwd)
+	if !result.HasAny() {
+		t.Error("expected portable .mcp.json to be discovered")
+	}
+	if result.TotalServers() != 1 {
+		t.Errorf("expected 1 server from portable .mcp.json, got %d", result.TotalServers())
+	}
+	// Verify source name
+	found := false
+	for _, src := range result.Sources {
+		if strings.Contains(src.Name, "Portable") || strings.Contains(src.Name, "mcp.json") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a source named 'Portable' or similar, got: %+v", result.Sources)
+	}
+}
+
+// --- 17. URL redaction: query param token ---
+
+func TestRedactURL_QueryToken(t *testing.T) {
+	raw := "https://example.com/mcp?token=SUPERSECRET&other=fine"
+	safe := RedactURL(raw)
+	if strings.Contains(safe, "SUPERSECRET") {
+		t.Errorf("token leaked into URL: %s", safe)
+	}
+	// url.Values.Encode() encodes brackets, so accept both forms
+	if !strings.Contains(safe, "REDACTED") {
+		t.Errorf("expected REDACTED marker in URL, got: %s", safe)
+	}
+	if !strings.Contains(safe, "other=fine") {
+		t.Errorf("non-sensitive param removed: %s", safe)
+	}
+}
+
+// --- 18. URL redaction: userinfo credentials ---
+
+func TestRedactURL_UserinfoCredentials(t *testing.T) {
+	raw := "https://user:PASSWORD@example.com/mcp"
+	safe := RedactURL(raw)
+	if strings.Contains(safe, "PASSWORD") {
+		t.Errorf("password leaked into URL: %s", safe)
+	}
+	// url.UserPassword encodes the replacement, accept any form containing REDACTED
+	if !strings.Contains(safe, "REDACTED") {
+		t.Errorf("expected REDACTED marker in URL, got: %s", safe)
+	}
+	if !strings.Contains(safe, "user") {
+		t.Errorf("username should be preserved, got: %s", safe)
+	}
+}
+
+// --- 19. URL redaction: safe URL is unchanged ---
+
+func TestRedactURL_SafeURL(t *testing.T) {
+	raw := "http://localhost:3000/mcp"
+	safe := RedactURL(raw)
+	if safe != raw {
+		t.Errorf("safe URL was modified: %q -> %q", raw, safe)
+	}
+}
+
+// --- 20. HTTP server URL is redacted in ServerConfig ---
+
+func TestParse_HTTPServerURLRedacted(t *testing.T) {
+	json := configJSON(`{"srv": {"url": "https://example.com/mcp?token=mysecret"}}`)
+	servers, err := parseString(t, json)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(servers) != 1 {
+		t.Fatalf("expected 1 server")
+	}
+	if strings.Contains(servers[0].SafeURL, "mysecret") {
+		t.Errorf("secret leaked into SafeURL: %s", servers[0].SafeURL)
 	}
 }
 

@@ -1,5 +1,5 @@
 ---
-name: 🚀 Feature Request
+name: 💡 Feature Request
 description: Suggest a new feature, probe, or diagnostic layer for aitrouble
 title: "[Feature]: "
 labels: ["type:feature"]
@@ -8,8 +8,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a feature! `aitrouble` aims to be the definitive AI integration troubleshooter. 
-        Your idea will help us decide which probes and providers to add next.
+        Thanks for suggesting a feature! `aitrouble` diagnoses AI integration failures by probing each layer of the stack.
+        Your idea will help prioritize which probes and providers to add next.
 
   - type: textarea
     id: problem
@@ -19,7 +19,7 @@ body:
         What problem does this feature solve? Describe the scenario where you needed this but didn't have it.
         "I was trying to debug X, but aitrouble couldn't tell me Y because..."
       placeholder: |
-        When using Azure OpenAI, aitrouble doesn't distinguish between a wrong deployment name 
+        When using Azure OpenAI, aitrouble doesn't distinguish between a wrong deployment name
         and an invalid API key — both return 404, but the fix is completely different.
     validations:
       required: true
@@ -32,12 +32,8 @@ body:
       placeholder: |
         Add an Azure-specific probe that:
         1. Detects `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY` in Effective Config
-        2. Probes `{endpoint}/openai/deployments?api-version=...` 
+        2. Probes `{endpoint}/openai/deployments?api-version=...`
         3. Returns distinct evidence for "invalid key" vs "deployment not found"
-
-        Example output:
-          ✗  Azure › Deployment 'gpt-4-turbo' not found
-             Available: ['gpt-35-turbo', 'text-embedding-ada-002']
     validations:
       required: true
 
@@ -46,7 +42,7 @@ body:
     attributes:
       label: Alternatives Considered
       description: What other approaches or workarounds have you tried?
-      placeholder: "I manually ran curl to the Azure management API, but that requires extra permissions..."
+      placeholder: "I manually ran curl to check the endpoint, but that doesn't cover the full diagnostic chain..."
     validations:
       required: false
 
@@ -60,13 +56,13 @@ body:
         - Network › DNS
         - Network › TCP
         - Network › TLS
-        - Network › HTTP
-        - Provider Probe (OpenAI)
+        - Provider Probe (OpenAI / compatible)
         - Provider Probe (Azure OpenAI)
         - Provider Probe (Anthropic)
         - Provider Probe (Google Gemini)
         - Provider Probe (Other OpenAI-compatible)
-        - Local MCP Process
+        - Local MCP Configuration Discovery
+        - Local MCP Process Probe (planned)
         - CLI / Output / Formatting
         - New top-level command
         - Other

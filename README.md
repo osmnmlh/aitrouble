@@ -7,20 +7,21 @@
 [![CI](https://github.com/osmnmlh/aitrouble/actions/workflows/ci.yml/badge.svg)](https://github.com/osmnmlh/aitrouble/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/go-1.27-00ADD8?logo=go)](https://go.dev/dl/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/osmnmlh/aitrouble)](https://goreportcard.com/report/github.com/osmnmlh/aitrouble)
 [![Release](https://img.shields.io/github/v/release/osmnmlh/aitrouble?color=blueviolet)](https://github.com/osmnmlh/aitrouble/releases)
 
 </div>
 
 ---
 
-## Why is your AI integration down? Stop guessing.
+## The problem
 
-`aitrouble` is a zero-dependency, read-only CLI. Run `aitrouble doctor` to get a deterministic, human-readable diagnosis of exactly where your AI integration fails — no guessing, no secrets leaked.
+AI integrations break in ways that are hard to isolate:
 
-**Implemented today:** Effective Configuration · DNS · TCP · TLS · OpenAI-compatible `/models` · `aitrouble doctor` · deterministic diagnosis · local MCP config discovery · exit-code semantics
+- **Wrong effective configuration** — your `.env` sets `OPENAI_BASE_URL` but the shell environment overrides it silently with a stale value
+- **Unreachable endpoint** — a local proxy or custom gateway is down, DNS fails, or a firewall blocks the port
+- **Provider rejection** — authentication fails (401), a deployment path is wrong (404), or the account is rate-limited (429)
 
-**Planned:** MCP process probing (M5B) · JSON output · TUI · LLM diagnosis · additional provider profiles
+`aitrouble doctor` runs a deterministic, layered probe sequence and tells you exactly which layer is broken and why — without guessing.
 
 ---
 
@@ -74,34 +75,55 @@ Find where your AI integration breaks.
 |---|---|
 | 🏠 **Local-first** | Runs entirely on your machine. No remote agents, no SaaS, no accounts. |
 | 🔕 **Zero-telemetry** | No analytics, no crash reporting, no beaconing of any kind. |
-| 🔒 **Secret-safe** | Secrets are redacted from aitrouble output. Authenticated requests, when enabled, are sent only to the configured provider endpoint. |
+| 🔒 **Secret-safe** | API keys, tokens, and MCP URL credentials are redacted from all output. |
 | 📦 **Single-binary** | One static binary. `go install` and you're done. No runtime dependencies. |
-| 📖 **Read-only** | `aitrouble` never writes to your config files. It only reads and probes. |
+| 📖 **Read-only** | `aitrouble` never writes to your config files or executes discovered MCP commands. |
 
 ---
 
-## Quick Start
+## Install
 
-### Install via `go install`
+### Via `go install`
 
 ```bash
 go install github.com/osmnmlh/aitrouble/cmd/aitrouble@latest
 ```
 
+### Pre-built binaries
 
+Download the binary for your platform from the [Releases page](https://github.com/osmnmlh/aitrouble/releases).
 
-### Run
+| Platform | Archive |
+|---|---|
+| Linux (x86\_64) | `aitrouble_Linux_x86_64.tar.gz` |
+| macOS (Intel) | `aitrouble_Darwin_x86_64.tar.gz` |
+| macOS (Apple Silicon) | `aitrouble_Darwin_arm64.tar.gz` |
+| Windows (x86\_64) | `aitrouble_Windows_x86_64.zip` |
+
+Checksums are provided as `checksums.txt` (SHA-256).
+
+---
+
+## Usage
 
 ```bash
-# Check version
+# Print version
 aitrouble --version
 
 # Run full diagnostic in current directory
 aitrouble doctor
 
-# Target a specific .env file
+# Use a specific .env file
 aitrouble doctor --env-file /path/to/.env
 ```
+
+**Exit codes:**
+
+| Code | Meaning |
+|---|---|
+| `0` | All tested components appear healthy |
+| `1` | A failure was detected in at least one layer |
+| `2` | CLI usage error |
 
 ---
 
@@ -118,7 +140,7 @@ Your Project Directory
                │
                ▼
 ┌───────────────────────────────┐
-│  2. Network Probes            │  DNS → TCP → TLS (HTTPS)
+│  2. Network Probes            │  DNS → TCP → TLS
 │     → Pass / Fail + Evidence  │  Short-circuit on first failure
 └──────────────┬────────────────┘
                │
@@ -129,12 +151,49 @@ Your Project Directory
 └──────────────┬────────────────┘
                │
                ▼
+┌───────────────────────────────┐
+│  4. MCP Discovery (static)    │  Cursor · Claude Desktop · VS Code
+│     → Config inventory        │  Never executes commands
+└──────────────┬────────────────┘
+               │
+               ▼
         DETERMINISTIC DIAGNOSIS + FIX HINT
 ```
 
-> **Planned (M5):** Local MCP process probing will extend the chain above.
+> **Planned (M5B):** Local MCP process health probing will extend the chain with an active runtime check.
 
 ---
+
+## Current Capabilities
+
+| Capability | Status |
+|---|---|
+| Effective Configuration (`shell → .env → default`) | ✅ |
+| DNS probe | ✅ |
+| TCP probe | ✅ |
+| TLS probe | ✅ |
+| OpenAI-compatible `/models` probe | ✅ |
+| `aitrouble doctor` orchestration | ✅ |
+| Deterministic failure diagnosis | ✅ |
+| Local MCP config discovery (static) | ✅ |
+| Exit-code semantics | ✅ |
+| MCP process health probing (M5B) | ⏳ Planned |
+| JSON output | ⏳ Planned |
+| TUI | ⏳ Planned |
+| Additional provider profiles | ⏳ Planned |
+
+### MCP Discovery Sources
+
+`aitrouble doctor` discovers MCP server definitions from the following locations (read-only, no process execution):
+
+| Source | Location |
+|---|---|
+| Cursor | `~/.cursor/mcp.json` |
+| Claude Desktop (Windows) | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Linux) | `$XDG_CONFIG_HOME/Claude/claude_desktop_config.json` |
+| VS Code workspace | `<cwd>/.vscode/mcp.json` |
+| Portable | `<cwd>/.mcp.json` |
 
 ---
 
@@ -160,7 +219,7 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before 
 git clone https://github.com/osmnmlh/aitrouble.git
 cd aitrouble
 go mod download
-go test ./...
+go test -race ./...
 go build ./cmd/aitrouble
 ```
 
@@ -168,15 +227,15 @@ go build ./cmd/aitrouble
 
 ## Roadmap
 
-| Milestone | Target | Status |
-|---|---|---|
-| **M0** – Spike Verification | Week 1 | ✅ Complete |
-| **M1** – Core Engine & Effective Config | Week 2 | ✅ Complete |
-| **M2** – Network Probes | Week 3 | ✅ Complete |
-| **M3** – Provider Probe | Week 4 | ✅ Complete |
-| **M4** – Doctor + Deterministic Diagnosis | Week 5 | ✅ Complete |
-| **M5A** – Local MCP Discovery | Week 6 | ✅ Complete |
-| **M5B** – Local MCP Process Probe | Week 7 | ⏳ Planned |
+| Milestone | Status |
+|---|---|
+| **M0** – Spike Verification | ✅ Complete |
+| **M1** – Core Engine & Effective Config | ✅ Complete |
+| **M2** – Network Probes | ✅ Complete |
+| **M3** – Provider Probe | ✅ Complete |
+| **M4** – Doctor + Deterministic Diagnosis | ✅ Complete |
+| **M5A** – Local MCP Discovery | ✅ Complete |
+| **M5B** – Local MCP Process Probe | ⏳ Planned |
 
 ---
 

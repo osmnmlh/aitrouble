@@ -28,14 +28,20 @@ type ProviderProber interface {
 type deps struct {
 	net  NetworkProber
 	prov ProviderProber
+	home string // for MCP discovery; defaults to os.UserHomeDir()
+	cwd  string // for MCP discovery; defaults to os.Getwd()
 }
 
 // Run orchestrates the doctor command using real production probers.
 // It returns an exit code (0 for pass/healthy, 1 for failure detected, 2 for usage error).
 func Run(ctx context.Context, envFile string, stdout, stderr io.Writer) int {
+	home, _ := os.UserHomeDir()
+	cwd, _ := os.Getwd()
 	d := deps{
 		net:  network.NewDefaultProber(10 * time.Second),
 		prov: provider.NewProviderProber(nil, 30*time.Second),
+		home: home,
+		cwd:  cwd,
 	}
 	return runWithDeps(ctx, envFile, stdout, stderr, d)
 }
@@ -95,9 +101,7 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 
 	// 4. Local MCP Discovery
 	fmt.Fprintln(stdout, "\n[4/4] Local MCP")
-	cwd, _ := os.Getwd()
-	home, _ := os.UserHomeDir()
-	mcpResult := mcp.DiscoverFromContext(home, cwd)
+	mcpResult := mcp.DiscoverFromContext(d.home, d.cwd)
 	mcpFailed := printMCPSection(stdout, mcpResult)
 
 	// 5. Correlate Results

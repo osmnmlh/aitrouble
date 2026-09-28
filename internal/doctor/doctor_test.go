@@ -332,3 +332,148 @@ func TestRunWithDeps_TLSFailNotProvider(t *testing.T) {
 		t.Errorf("expected TLS layer diagnosis, got:\n%s", out)
 	}
 }
+
+// --- MCP doctor integration regression tests ---
+
+// allPassNetProber returns all-pass network results for a passing baseline.
+func allPassNet() *fakeNetProber {
+	return &fakeNetProber{results: []core.ProbeResult{
+		{Name: "DNS", Status: core.StatusPass},
+		{Name: "TCP", Status: core.StatusPass},
+		{Name: "TLS", Status: core.StatusPass},
+	}}
+}
+
+func allPassProv() *fakeProvProber {
+	return &fakeProvProber{result: core.ProbeResult{Name: "OpenAI /models", Status: core.StatusPass}}
+}
+
+// TestMCP_NoConfig: no MCP config → [4/4] shows skip message, exit 0 preserved.
+func TestMCP_NoConfig(t *testing.T) {
+	t.Setenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+	home := t.TempDir() // empty — no MCP configs
+	cwd := t.TempDir()
+
+	d := deps{
+		net:  allPassNet(),
+		prov: allPassProv(),
+		home: home,
+		cwd:  cwd,
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runWithDeps(context.Background(), "", &stdout, &stderr, d)
+
+	if code != 0 {
+		t.Errorf("no MCP config: expected exit 0, got %d\n%s", code, stdout.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "[4/4] Local MCP") {
+		t.Error("expected [4/4] Local MCP section")
+	}
+	if !strings.Contains(out, "No supported MCP configuration detected") {
+		t.Errorf("expected skip message, got:\n%s", out)
+	}
+}
+
+// TestMCP_ValidConfig: valid MCP config → discovery visible, exit 0.
+func TestMCP_ValidConfig(t *testing.T) {
+	t.Setenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+	home := t.TempDir()
+	cwd := t.TempDir()
+
+	// Write a valid Cursor MCP config
+	if err := os.MkdirAll(filepath.Join(home, ".cursor"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	content := `{"mcpServers":{"myserver":{"command":"npx","args":["server"]}}}`
+	if err := os.WriteFile(filepath.Join(home, ".cursor", "mcp.json"), []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := deps{
+		net:  allPassNet(),
+		prov: allPassProv(),
+		home: home,
+		cwd:  cwd,
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runWithDeps(context.Background(), "", &stdout, &stderr, d)
+
+	if code != 0 {
+		t.Errorf("valid MCP config: expected exit 0, got %d\n%s", code, stdout.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "Cursor") {
+		t.Errorf("expected Cursor config in output, got:\n%s", out)
+	}
+	if !strings.Contains(out, "myserver") {
+		t.Errorf("expected server name in output, got:\n%s", out)
+	}
+}
+
+// TestMCP_MalformedConfig: malformed MCP config → MCP › Configuration diagnosis, exit 1.
+func TestMCP_MalformedConfig(t *testing.T) {
+	t.Setenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+	home := t.TempDir()
+	cwd := t.TempDir()
+
+	// Write malformed Cursor config
+	if err := os.MkdirAll(filepath.Join(home, ".cursor"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".cursor", "mcp.json"), []byte("not json"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := deps{
+		net:  allPassNet(),
+		prov: allPassProv(),
+		home: home,
+		cwd:  cwd,
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runWithDeps(context.Background(), "", &stdout, &stderr, d)
+
+	if code != 1 {
+		t.Errorf("malformed MCP config: expected exit 1, got %d\n%s", code, stdout.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "MCP") {
+		t.Errorf("expected MCP diagnosis, got:\n%s", out)
+	}
+}
+
+// TestMCP_SecretURLNotLeaked: MCP HTTP URL token must not appear in output.
+func TestMCP_SecretURLNotLeaked(t *testing.T) {
+	const secretToken = "supersecret-mcp-token-xyz"
+	t.Setenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+	home := t.TempDir()
+	cwd := t.TempDir()
+
+	// Write MCP config with a secret-bearing HTTP URL
+	if err := os.MkdirAll(filepath.Join(home, ".cursor"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	content := `{"mcpServers":{"srv":{"url":"https://mcp.example.com/mcp?token=` + secretToken + `"}}}`
+	if err := os.WriteFile(filepath.Join(home, ".cursor", "mcp.json"), []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := deps{
+		net:  allPassNet(),
+		prov: allPassProv(),
+		home: home,
+		cwd:  cwd,
+	}
+
+	var stdout, stderr bytes.Buffer
+	runWithDeps(context.Background(), "", &stdout, &stderr, d)
+
+	combined := stdout.String() + stderr.String()
+	if strings.Contains(combined, secretToken) {
+		t.Errorf("MCP URL token leaked into output:\n%s", combined)
+	}
+}

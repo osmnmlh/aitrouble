@@ -2,11 +2,10 @@
 
 ## 1. Overview
 
-`aitrouble` exists to quickly identify where an AI integration breaks by systematically probing the effective configuration, network topology, and provider requirements.
+`aitrouble` quickly identifies where an AI integration breaks by probing the effective configuration, network path, provider API, and local MCP configuration — and pinpointing the first failing layer.
 
 ## 2. Actors
 
-The intended users of the tool include:
 - Developer
 - AI application developer
 - Local LLM developer
@@ -16,81 +15,111 @@ The intended users of the tool include:
 
 ## 3. Current Supported Use Cases
 
-The current system supports an end-to-end CLI `doctor` experience that executes these component-level checks and aggregates the results into a final diagnosis.
+The `aitrouble doctor` command executes a full diagnostic chain and presents a deterministic diagnosis.
 
 ### UC-01 — Effective configuration resolution
-Safely reading the API key and Base URL to determine whether to use:
-`shell env` vs `.env` vs `default`.
+
+Resolves the active `OPENAI_API_KEY` and `OPENAI_BASE_URL` using precedence:
+`shell env` → `.env` → `default`. Surfaces surprising overrides before any network probe runs.
 
 ### UC-02 — DNS failure
-If DNS fails to resolve a hostname, the system short-circuits. Downstream TCP and TLS probes are safely aborted, explicitly highlighting DNS as the fault.
+
+If DNS fails to resolve the hostname, downstream TCP and TLS probes are short-circuited. DNS is explicitly identified as the fault.
 
 ### UC-03 — TCP refusal
-If DNS succeeds but the destination actively refuses a TCP connection.
+
+DNS succeeds but the destination actively refuses the TCP connection.
 
 ### UC-04 — TCP timeout
-If DNS succeeds but the TCP handshake times out.
+
+DNS succeeds but the TCP handshake times out (firewall, wrong port, service not running).
 
 ### UC-05 — TLS failure
-If DNS and TCP succeed, but the TLS handshake fails (e.g., certificate validation errors).
+
+DNS and TCP succeed, but the TLS handshake fails (certificate error, expired cert, SNI mismatch).
 
 ### UC-06 — Provider authentication failure
-If the network stack passes (DNS ✓, TCP ✓, TLS ✓), but the provider responds with `401` or `403`.
+
+Network passes (DNS ✓, TCP ✓, TLS ✓), but the provider responds with `401` or `403`. The API key is wrong or inactive.
 
 ### UC-07 — Provider route not found
-If the expected OpenAI-compatible `/models` route returns a `404`.
+
+The OpenAI-compatible `/models` route returns `404`. The base URL path is incorrect (e.g., missing `/v1`).
 
 ### UC-08 — Provider rate limit
-If the expected `/models` route returns a `429`.
+
+`/models` returns `429`. The account is rate-limited or quota is exhausted.
 
 ### UC-09 — Provider server error
-If the provider responds with `5xx`.
 
-### UC-10 — Local OpenAI-compatible endpoint
-If the developer specifies a local target (e.g., `http://localhost:...`), `aitrouble` handles HTTP (bypassing TLS) seamlessly to probe the endpoint.
+The provider responds with `5xx`. The service is degraded.
+
+### UC-10 — Local or HTTP endpoint
+
+When `OPENAI_BASE_URL` uses `http://` (e.g., a local proxy on `localhost:11434`), TLS is bypassed automatically and only DNS + TCP are probed.
+
+### UC-11 — MCP configuration discovery
+
+When `aitrouble doctor` runs, it discovers MCP server definitions from well-known client configuration files (Cursor, Claude Desktop, VS Code workspace, portable `.mcp.json`). The output shows:
+
+- which MCP configuration sources were found
+- how many server definitions each contains
+- transport type (stdio / http) and command or redacted URL
+
+This is a **static, read-only** check. No MCP servers are started or queried.
+
+### UC-12 — Malformed MCP configuration
+
+If a discovered MCP configuration file exists but cannot be parsed (invalid JSON, wrong structure), `aitrouble doctor` reports it as a `MCP › Configuration` failure and exits with code `1`.
 
 ## 4. Planned Use Cases
 
-*These use cases are planned but not yet implemented:*
-- local MCP process health checks
-- MCP configuration discovery
-- JSON output
-- CI/CD integration
-- additional provider profiles
+- **UC-P1 — MCP process health probe (M5B):** Start and verify that discovered MCP servers are actually running and responsive via the MCP initialize handshake.
+- **UC-P2 — JSON output:** Machine-readable `--json` flag for CI/CD integration.
+- **UC-P3 — Additional provider profiles:** Azure OpenAI, Anthropic, Google Gemini.
 
 ## 5. Diagnostic Chain
 
-When a full diagnostic workflow runs, it follows a rigorous hierarchy of trust:
-1. Load configuration (`EffectiveConfig`).
-2. Test network health (`NetworkProber`).
-3. Test provider authentication/API shapes (`ProviderProber`).
-4. (Planned) Aggregate faults into `core.Diagnosis`.
+```text
+1. Load configuration (EffectiveConfig)
+2. Test network health (DNS → TCP → TLS)
+3. Test provider authentication (GET /models)
+4. Discover local MCP configuration (static)
+5. Correlate results → deterministic Diagnosis → exit code
+```
+
+Network and provider failures take priority over MCP configuration issues in the diagnosis output.
 
 ## 6. Example Failure Scenarios
 
 ### Scenario A — Wrong API key
-```text
-DNS ✓
-TCP ✓
-TLS ✓
-Provider ✗ 401
-```
-**Interpretation:** Network path works. Provider rejected authentication.
 
-### Scenario B — DNS problem
 ```text
-DNS ✗
-TCP –
-TLS –
-Provider –
+DNS ✓  TCP ✓  TLS ✓  Provider ✗ 401
 ```
-**Interpretation:** The failure occurred before TCP/provider access.
+
+**Diagnosis:** `Provider › Authentication` — network path succeeded; provider rejected authentication.
+
+### Scenario B — DNS failure
+
+```text
+DNS ✗  TCP –  TLS –  Provider –
+```
+
+**Diagnosis:** `Network › DNS` — hostname could not be resolved; downstream probes skipped.
 
 ### Scenario C — Wrong provider route
+
 ```text
-DNS ✓
-TCP ✓
-TLS ✓
-Provider ✗ 404
+DNS ✓  TCP ✓  TLS ✓  Provider ✗ 404
 ```
-**Interpretation:** The target is reachable, but `/models` was not found. (Note: A 404 implies the route is missing, but does not definitively prove global incompatibility.)
+
+**Diagnosis:** `Provider › /models` — target is reachable, but the `/models` route was not found. Check `OPENAI_BASE_URL` path.
+
+### Scenario D — Malformed MCP config (all network probes pass)
+
+```text
+DNS ✓  TCP ✓  TLS ✓  Provider ✓  MCP ✗ (malformed JSON)
+```
+
+**Diagnosis:** `MCP › Configuration` — all provider checks passed, but a discovered MCP config file is invalid.

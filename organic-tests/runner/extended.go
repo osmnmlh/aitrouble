@@ -148,7 +148,7 @@ func randomizedConfigProviderScenario(r *Runner, ordinal int, seed int64) Scenar
 	var expected Expectation
 	var auth *bool
 	if effectiveBase == "" {
-		expected = Expectation{ExitCode: 1, FailingLayer: "", FailureKind: "", ProviderRequests: 0}
+		expected = Expectation{ExitCode: 1, FailingLayer: "N/A", FailureKind: "N/A", ProviderRequests: 0}
 		s.check("empty_shell_value_is_explicit", strings.Contains(run.stdout, `OPENAI_BASE_URL  ""`))
 		actual := parseActual(run, p)
 		if actual.ExitCode == 1 && actual.FailingLayer == "Network" && actual.FailureKind == "invalid_url" {

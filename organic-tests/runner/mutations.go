@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io/fs"
 	"os"
@@ -61,6 +62,14 @@ func (r *Runner) buildMutant(id string, edits func(string) (string, error)) (str
 	if err != nil {
 		return "", fmt.Errorf("build mutant %s: %w: %s", id, err, out)
 	}
+	mutantBin, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	mutantSHA := fmt.Sprintf("%x", sha256.Sum256(mutantBin))
+	if mutantSHA == r.bin.SHA256 {
+		return "", fmt.Errorf("mutant binary identical to baseline (SHA-256 matched)")
+	}
 	return path, nil
 }
 
@@ -99,6 +108,7 @@ func shortCircuitMutationScenario(r *Runner, id string, seed int64, binary strin
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	p := newControlledProvider("ok", 0)
 	defer p.close()
 	_ = writeText(filepath.Join(s.project, ".env"), "OPENAI_BASE_URL="+p.baseURL("/mutation-short-circuit")+"\nOPENAI_API_KEY=key\n")

@@ -44,6 +44,7 @@ func providerScenario(r *Runner, id, name, category, mode string, seed int64, bi
 	if err != nil {
 		return ScenarioResult{ID: id, Name: name, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	p := newControlledProvider(mode, 31*time.Second)
 	defer p.close()
 	apiKey := "organic-provider-key"
@@ -79,6 +80,7 @@ func tcpRefusalScenario(r *Runner, id string, seed int64, binary string) Scenari
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	port, err := closedPort()
 	if err != nil {
 		s.forced = StatusBlocked
@@ -111,6 +113,7 @@ func dnsFailureScenario(r *Runner, id string, seed int64, binary string) Scenari
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	host := "invalid-test-domain.invalid"
 	_, oracleErr := net.DefaultResolver.LookupHost(context.Background(), host)
 	if oracleErr == nil {
@@ -143,6 +146,7 @@ func untrustedTLSScenario(r *Runner, id string, seed int64, binary string) Scena
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	tlsServer := newUntrustedTLSServer()
 	defer tlsServer.close()
 	s.check("independent_tcp_accept_oracle", directTCP(tlsServer.address()) == nil)
@@ -169,6 +173,7 @@ func handshakeFailureScenario(r *Runner, id string, seed int64, binary string) S
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	tlsServer, err := newPlainHandshakeFailureServer()
 	if err != nil {
 		s.forced = StatusBlocked
@@ -199,6 +204,7 @@ func staleShellScenario(r *Runner, id string, seed int64, binary string) Scenari
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	p := newControlledProvider("ok", 0)
 	defer p.close()
 	port, err := closedPort()
@@ -320,7 +326,7 @@ func malformedMCPScenario(r *Runner, id, label, body string, seed int64) Scenari
 	cancel()
 	s.writeStage("doctor", run)
 	t := true
-	s.compare(run, p, Expectation{ExitCode: 1, FailingLayer: "MCP › Configuration", FailureKind: "", ProviderRequests: 1, ProviderRequest: "GET /v1/models"}, &t)
+	s.compare(run, p, Expectation{ExitCode: 1, FailingLayer: "MCP › Configuration", FailureKind: "N/A", ProviderRequests: 1, ProviderRequest: "GET /v1/models"}, &t)
 	s.check("mcp_invalid_visible", strings.Contains(run.stdout, "Portable (.mcp.json)"))
 	p.close()
 	s.result.Process.ListenerClosed = true
@@ -332,6 +338,7 @@ func mcpSecretScenario(r *Runner, id string, seed int64, binary string) Scenario
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	p := newControlledProvider("ok", 0)
 	defer p.close()
 	canary := s.secretCanary()
@@ -360,6 +367,7 @@ func mcpNoExecScenario(r *Runner, id string, seed int64, binary string) Scenario
 	if err != nil {
 		return ScenarioResult{ID: id, Status: StatusBlocked, Triage: err.Error()}
 	}
+	s.setBinary(binary)
 	p := newControlledProvider("ok", 0)
 	defer p.close()
 	marker := filepath.Join(r.lab, "processes", id+"-mcp-command.marker")

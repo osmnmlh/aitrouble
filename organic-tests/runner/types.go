@@ -98,6 +98,7 @@ type Report struct {
 	FinishedAt    string           `json:"finished_at"`
 	LabDirectory  string           `json:"lab_directory"`
 	Subject       BuildIdentity    `json:"subject"`
+	HarnessCommit string           `json:"harness_commit_sha"`
 	ReleaseBuilds []ReleaseBuild   `json:"release_builds"`
 	Results       []ScenarioResult `json:"results"`
 	Totals        map[string]int   `json:"totals"`

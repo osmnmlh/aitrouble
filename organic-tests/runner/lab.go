@@ -42,7 +42,8 @@ func newRunner(seed int64) (*Runner, error) {
 		}
 	}
 	r := &Runner{repo: repo, organicRoot: organicRoot, lab: lab, runID: runID, seed: seed}
-	r.report = Report{RunID: runID, MasterSeed: seed, StartedAt: time.Now().UTC().Format(time.RFC3339Nano), LabDirectory: lab, Totals: map[string]int{}}
+	harnessSHA, _ := commandCombined(cwd, nil, "git", "rev-parse", "HEAD")
+	r.report = Report{RunID: runID, MasterSeed: seed, StartedAt: time.Now().UTC().Format(time.RFC3339Nano), LabDirectory: lab, Totals: map[string]int{}, HarnessCommit: strings.TrimSpace(harnessSHA)}
 	return r, nil
 }
 

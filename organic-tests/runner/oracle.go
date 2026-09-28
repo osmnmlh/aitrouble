@@ -45,6 +45,15 @@ func (r *Runner) begin(id, name, category string, seed int64) (*labScenario, err
 
 func (s *labScenario) random() *rand.Rand { return rand.New(rand.NewSource(s.result.Seed)) }
 
+func (s *labScenario) setBinary(path string) {
+	if path != "" && path != s.r.bin.Path {
+		s.result.Binary.Path = path
+		if h, err := sha256File(path); err == nil {
+			s.result.Binary.SHA256 = h
+		}
+	}
+}
+
 func parentEnvironmentState() string {
 	keys := []string{"OPENAI_BASE_URL", "OPENAI_API_KEY", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "XDG_CONFIG_HOME"}
 	parts := make([]string, 0, len(keys))
@@ -84,6 +93,12 @@ func parseActual(run doctorRun, provider *controlledProvider) Observation {
 	if o.FailingLayer == "None" {
 		o.FailureKind = "None"
 	}
+	if o.FailingLayer == "" {
+		o.FailingLayer = "N/A"
+	}
+	if o.FailureKind == "" {
+		o.FailureKind = "N/A"
+	}
 	o.DownstreamProviderSK = strings.Contains(combined, "Provider Probe") && strings.Contains(combined, "skipped due to network failure")
 	if provider != nil {
 		po := provider.observation()
@@ -109,13 +124,13 @@ func (s *labScenario) evidence(text string)          { s.result.Evidence = appen
 func (s *labScenario) compare(run doctorRun, provider *controlledProvider, expected Expectation, authExpected *bool) Observation {
 	actual := parseActual(run, provider)
 	s.result.Expected, s.result.Observed = expected, actual
-	s.check("exit_code", actual.ExitCode == expected.ExitCode)
-	s.check("failing_layer", actual.FailingLayer == expected.FailingLayer)
-	s.check("failure_kind", actual.FailureKind == expected.FailureKind)
-	s.check("provider_request_count", actual.ProviderRequests == expected.ProviderRequests)
-	s.check("downstream_provider_skip", actual.DownstreamProviderSK == expected.DownstreamProviderSK)
+	s.check("behavior_matched_exit_code", actual.ExitCode == expected.ExitCode)
+	s.check("behavior_matched_failing_layer", actual.FailingLayer == expected.FailingLayer)
+	s.check("behavior_matched_failure_kind", actual.FailureKind == expected.FailureKind)
+	s.check("behavior_matched_provider_request_count", actual.ProviderRequests == expected.ProviderRequests)
+	s.check("behavior_matched_downstream_provider_skipped", actual.DownstreamProviderSK == expected.DownstreamProviderSK)
 	if expected.ProviderRequests > 0 {
-		s.check("provider_method_and_path", actual.ProviderRequest == expected.ProviderRequest)
+		s.check("behavior_matched_provider_method_and_path", actual.ProviderRequest == expected.ProviderRequest)
 		if authExpected != nil {
 			matches := len(actual.AuthorizationPresent) == expected.ProviderRequests
 			for _, present := range actual.AuthorizationPresent {

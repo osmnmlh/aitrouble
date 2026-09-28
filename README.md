@@ -223,13 +223,16 @@ go test -race ./...
 go build ./cmd/aitrouble
 ```
 
+### Testing
+
+For end-to-end release validation and QA, we use a fully automated suite. See [organic-tests/README.md](organic-tests/README.md) for instructions on running the organic-tests test harness.
+
 ---
 
 ## Roadmap
 
 | Milestone | Status |
 |---|---|
-| **M0** – Spike Verification | ✅ Complete |
 | **M1** – Core Engine & Effective Config | ✅ Complete |
 | **M2** – Network Probes | ✅ Complete |
 | **M3** – Provider Probe | ✅ Complete |

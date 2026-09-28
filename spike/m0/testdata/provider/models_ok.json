@@ -1,9 +1,0 @@
-{
-  "object": "list",
-  "data": [
-    {"id": "gpt-4o", "object": "model", "created": 1699000000, "owned_by": "openai"},
-    {"id": "gpt-4-turbo", "object": "model", "created": 1699000001, "owned_by": "openai"},
-    {"id": "gpt-3.5-turbo", "object": "model", "created": 1699000002, "owned_by": "openai"},
-    {"id": "text-embedding-3-large", "object": "model", "created": 1699000003, "owned_by": "openai"}
-  ]
-}

@@ -2,25 +2,28 @@
 
 ## 1. Purpose
 
-aitrouble is a read-only, single-binary CLI tool designed to definitively diagnose AI integration failures across the local environment, network, and provider layers without leaking credentials.
+`aitrouble` is a read-only, single-binary CLI tool that diagnoses AI integration failures across the local environment, network, and provider layers without leaking credentials.
 
 ## 2. Current System
 
-The current system implements the core deterministic configuration resolution, the bottom-up network probing sequence (DNS, TCP, TLS), and the provider-level `/models` probe. 
+The current system implements:
 
-The `doctor` CLI command orchestrates these probes and aggregates failures using a deterministic correlation engine, presenting a human-readable diagnosis.
-
-MCP discovery and JSON output are not yet implemented.
+- Deterministic configuration resolution (`shell → .env → default`)
+- Bottom-up network probing (DNS → TCP → TLS)
+- OpenAI-compatible `/models` provider probe
+- `aitrouble doctor` CLI orchestration with human-readable diagnosis
+- Local MCP configuration discovery (static, read-only — no process execution)
 
 ## 3. Production Package Structure
 
-The current production packages are strictly decoupled from the CLI edge and do not use third-party dependencies:
+All production packages use standard library only, with no third-party dependencies:
 
-- `internal/core`: Holds common domain types (`ProbeResult`, `EffectiveConfig`, `ConfigValue`, `Diagnosis`) and local configuration resolution rules.
-- `internal/network`: Executes deterministic DNS, TCP, and TLS probes. 
-- `internal/provider`: Executes safe HTTP probes against OpenAI-compatible `/models` endpoints, classifying status codes without exposing raw response bodies or credentials.
-- `internal/diagnosis`: Correlates probe results into deterministic layer failures.
-- `internal/doctor`: Orchestrates the CLI workflow and prints safe human-readable diagnostic output.
+- `internal/core` — common domain types: `ProbeResult`, `EffectiveConfig`, `ConfigValue`, `Diagnosis`; local `.env` parsing and config resolution
+- `internal/network` — deterministic DNS, TCP, and TLS probes with short-circuit semantics
+- `internal/provider` — safe HTTP probes against OpenAI-compatible `/models` endpoints; classifies HTTP status codes without exposing raw response bodies or credentials
+- `internal/diagnosis` — correlates probe results into deterministic failure layers
+- `internal/doctor` — orchestrates the CLI workflow; prints safe human-readable diagnostic output; integrates MCP discovery
+- `internal/mcp` — local MCP configuration file discovery and static parsing; never executes discovered commands
 
 ## 4. Current Data Flow
 
@@ -29,7 +32,7 @@ flowchart TD
 
     U["Developer"]
     CLI["aitrouble doctor"]
-    
+
     Config["EffectiveConfig"]
     Core["core.ProbeResult"]
 
@@ -40,7 +43,10 @@ flowchart TD
 
     Provider["ProviderProber"]
     Models["GET /models"]
-    
+
+    MCP["MCP Discovery"]
+    MCPSrc["Config files (static)"]
+
     Engine["Deterministic Correlator"]
     Output["Human-readable Report"]
 
@@ -57,15 +63,18 @@ flowchart TD
     Network --> Core
     Provider --> Models
     Models --> Core
-    
+
+    CLI --> MCP
+    MCP --> MCPSrc
+
     Core --> Engine
+    MCP --> Engine
     Engine --> Output
 ```
 
-## 5. Core Domain Model
+> **Note:** MCP discovery feeds the report and can surface a `MCP › Configuration` diagnosis when a config file exists but is malformed. It does not replace or override network/provider failures.
 
-The following types represent the real, implemented domain objects. 
-(`Candidate` and `Diagnosis` exist as types but are not actively used by an engine yet).
+## 5. Core Domain Model
 
 ```mermaid
 classDiagram
@@ -92,23 +101,13 @@ class ProbeResult {
     +Evidence []string
 }
 
-class Candidate {
-    +Cause string
-    +Confidence string
-    +Evidence []string
-}
-
 class Diagnosis {
     +FailingLayer string
     +Summary string
     +FixHint string
-    +Candidates []Candidate
 }
 
 class NetworkProber {
-    +ProbeDNS()
-    +ProbeTCP()
-    +ProbeTLS()
     +ProbeTarget()
 }
 
@@ -116,174 +115,143 @@ class ProviderProber {
     +ProbeModels()
 }
 
+class MCPDiscovery {
+    +DiscoverFromContext()
+    +ParseConfigReader()
+    +ParseVSCodeReader()
+}
+
+class ServerConfig {
+    +Name string
+    +Transport Transport
+    +Command string
+    +ArgCount int
+    +EnvCount int
+    +SafeURL string
+}
+
 EffectiveConfig --> ConfigValue
 NetworkProber --> ProbeResult
 ProviderProber --> ProbeResult
-Diagnosis --> Candidate
+MCPDiscovery --> ServerConfig
 ```
 
 ## 6. Configuration Resolution
 
-Currently supported configuration keys:
+Supported configuration keys:
 - `OPENAI_API_KEY`
-- `OPENAI_BASE_URL`
+- `OPENAI_BASE_URL` (default: `https://api.openai.com/v1`)
 
 Precedence:
 ```text
 shell environment
         ↓
-.env
+.env file
         ↓
 default
 ```
 
-Current default:
-`OPENAI_BASE_URL=https://api.openai.com/v1`
-
-- `.env` is read locally.
-- A missing `.env` is not treated as an error, but actual filesystem errors are surfaced.
-- API keys are treated as secrets and formatted securely. `RawValue()` is provided strictly for internal HTTP request authorization.
-
-*(Note: Profile-based configs, VS Code settings, or Cursor configs are not currently implemented.)*
+- A missing `.env` is silently skipped. Actual filesystem errors (permissions, etc.) are surfaced.
+- `OPENAI_API_KEY` is treated as a secret. `RawValue()` is provided strictly for internal HTTP request authorization.
 
 ## 7. Network Probe Flow
 
-Network logic strictly uses standard library primitives.
-
-HTTPS short-circuit behavior:
+HTTPS short-circuit:
 ```text
-DNS fail
-    ↓
-TCP skipped
-TLS skipped
-
-DNS pass
-    ↓
-TCP fail
-    ↓
-TLS skipped
+DNS fail → TCP skipped → TLS skipped
+DNS pass → TCP fail → TLS skipped
+DNS pass → TCP pass → TLS runs
 ```
 
-HTTP short-circuit behavior:
+HTTP short-circuit:
 ```text
-DNS → TCP (TLS is skipped entirely)
+DNS → TCP (TLS is skipped for plain http:// targets)
 ```
 
-*(Note: ICMP, MTU, packet capture, or traceroutes are intentionally outside the network probe scope.)*
-
-## 8. Provider Probe Flow
+## 8. Provider Probe
 
 The provider probe executes an OpenAI-compatible API request using the resolved config.
 
 ```text
-EffectiveConfig
-      ↓
-OPENAI_BASE_URL
-      ↓
-GET /models
-      ↓
-HTTP result
-      ↓
-core.ProbeResult
+EffectiveConfig → OPENAI_BASE_URL → GET /models → HTTP result → core.ProbeResult
 ```
-
-Authentication is injected safely:
-`Authorization: Bearer <OPENAI_API_KEY>`
 
 Result classification:
 - `200` → `pass`
-- `401` → `auth_failure`
-- `403` → `auth_failure`
+- `401/403` → `auth_failure`
 - `404` → `route_not_found`
 - `429` → `rate_limited`
 - `5xx` → `provider_server_error`
-- `other non-2xx` → `provider_http_error`
-- `invalid JSON / invalid data shape` → `provider_invalid_response`
-- `timeout` → `http_timeout`
-- `cancelled` → `http_cancelled`
+- Other non-2xx → `provider_http_error`
+- Invalid response → `provider_invalid_response`
+- Timeout → `http_timeout`
 
-```mermaid
-sequenceDiagram
-    participant C as EffectiveConfig
-    participant P as ProviderProber
-    participant A as OpenAI-Compatible API
+## 9. MCP Discovery (M5A — Static, Read-only)
 
-    C->>P: Resolve OPENAI_BASE_URL
-    C->>P: Resolve OPENAI_API_KEY
-    P->>A: GET /models
-    Note over P,A: Authorization header only when key exists
-    A-->>P: HTTP response
-    P->>P: Classify response
-    P-->>C: core.ProbeResult
-```
+`internal/mcp` discovers MCP server definitions from well-known client config locations:
 
-## 9. Security Model
+| Source | Path |
+|---|---|
+| Cursor | `~/.cursor/mcp.json` |
+| Claude Desktop (Windows) | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Linux) | `$XDG_CONFIG_HOME/Claude/claude_desktop_config.json` |
+| VS Code workspace | `<cwd>/.vscode/mcp.json` (uses `servers` key) |
+| Portable | `<cwd>/.mcp.json` (uses `mcpServers` key) |
+
+Security invariants:
+- MCP commands are **never executed**.
+- Env variable values are **never stored or printed** (only count is reported).
+- HTTP URL credentials and sensitive query parameters are redacted via `RedactURL()` before any display.
+- Raw args are never printed.
+
+MCP diagnosis semantics:
+- No config found → `StatusSkip` (not a failure; most machines have no MCP config)
+- Config found and valid → `StatusPass`
+- Config found but malformed → `StatusFail` → diagnosis `MCP › Configuration`
+
+## 10. Security Model
 
 ```text
-API key
-   ↓
-EffectiveConfig
-   ↓
-Authorization header
-   ↓
-provider request
+API key → EffectiveConfig → Authorization header → provider request
 
-                 NOT:
-ProbeResult.Name
-ProbeResult.FailureKind
-ProbeResult.Evidence
-normal formatted output
+NOT in:
+  ProbeResult.Name
+  ProbeResult.FailureKind
+  ProbeResult.Evidence
+  formatted output
+  MCP server config display
 ```
 
-API keys are guaranteed never to appear in evidence, failure strings, or JSON representations of results. 
+If a remote server echoes the API key back in an error body, the `ProbeResult` still fully redacts it. MCP HTTP URL tokens/passwords are redacted before being stored in `ServerConfig.SafeURL`.
 
-To ensure safety against malicious API endpoints, if the remote server echoes the API key back in its error body, the returned `ProbeResult` still fully replaces the key with `[REDACTED]`.
+## 11. Current Limitations
 
-## 10. Current Limitations
-
-- MCP probing is not implemented.
-- JSON output is not implemented.
-- TUI is not implemented.
-- LLM diagnosis is not implemented.
 - Only `OPENAI_API_KEY` and `OPENAI_BASE_URL` are currently supported.
-- Provider scope is currently restricted to OpenAI-compatible `/models`.
+- Provider probe scope is restricted to OpenAI-compatible `/models`.
+- MCP discovery is static only — no process health check (M5B, planned).
+- JSON output is not implemented (planned).
+- TUI is not implemented (planned).
+- LLM diagnosis is not implemented (planned).
 
-## 11. Planned Target Architecture
+## 12. Planned Extensions
 
-**Planned / not implemented**
+| Extension | Status |
+|---|---|
+| MCP process health probe (M5B) | Planned |
+| JSON output | Planned |
+| TUI | Planned |
+| Additional provider profiles (Azure, Anthropic, Gemini) | Planned |
+| LLM-assisted diagnosis | Planned |
 
-```mermaid
-flowchart TD
+## 13. Design Principles
 
-    ENGINE["Correlation / Diagnosis"]
-    OUTPUT["Human-readable Output"]
-
-    MCP["MCP Probe"]
-
-    MCP --> ENGINE
-```
-
-**Planned / not implemented**
-
-```mermaid
-classDiagram
-
-class MCPProber
-
-class Diagnosis
-
-MCPProber --> Diagnosis
-```
-
-## 12. Design Principles
-
-- **Local-first**: Diagnostics run locally without relying on external observability suites.
-- **Zero telemetry**: We collect zero diagnostic data.
-- **Read-only**: We inspect environments without modifying configuration.
-- **Secret-safe**: Secrets must never touch stdout, stderr, or JSON reports.
-- **Standard library first**: Pure Go standard library networking. No heavy third-party SDKs.
-- **Deterministic probes**: Meaningful, categorised faults mapped from raw network primitives.
-- **Explicit evidence**: Determinist facts are presented, not ambiguous guesses.
+- **Local-first**: Diagnostics run locally without relying on external observability.
+- **Zero telemetry**: No diagnostic data is collected or transmitted.
+- **Read-only**: Environments are inspected without modifying configuration.
+- **Secret-safe**: Secrets never touch stdout, stderr, or serialized output.
+- **Standard library first**: Pure Go standard library. No third-party SDKs.
+- **Deterministic probes**: Faults are categorized from raw network primitives.
 - **Short-circuit lower-layer failures**: Stop at DNS if DNS fails.
 - **Small implementations**: Code footprint kept purposefully small and readable.
-- **No premature abstraction**: Prefer the simplest implementation that satisfies the current requirement. Introduce abstraction only when there is a concrete need.
+- **No premature abstraction**: Simplest implementation that satisfies the current requirement.

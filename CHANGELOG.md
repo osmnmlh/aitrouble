@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MCP HTTP URL credentials and sensitive query parameters are redacted before display
 - MCP environment variable values are never stored or printed (count only)
 - No MCP server commands are executed (M5A is static discovery only)
-- Zero telemetry: no data leaves the machine
+- Zero telemetry: no diagnostic analytics, crash reports, or user data are sent to any centralized service; network and provider probes only contact the targets configured in the local environment
 - Read-only: no config files are modified
 
 [Unreleased]: https://github.com/osmnmlh/aitrouble/compare/v0.1.0...HEAD

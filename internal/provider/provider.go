@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/osmnmlh/aitrouble/internal/core"
+	"github.com/osmnmlh/aitrouble/internal/network"
 )
 
 // ProviderProber probes an OpenAI-compatible /models endpoint.
@@ -238,6 +239,9 @@ func classifyHTTPError(err error) string {
 	if errors.As(err, &dnsErr) {
 		return "dns_error"
 	}
+	if network.IsConnectionClosed(err) {
+		return "http_error"
+	}
 	if isConnectionRefused(err) {
 		return "tcp_refused"
 	}
@@ -255,6 +259,9 @@ func isConnectionRefused(err error) bool {
 }
 
 func safeHTTPErrorSummary(err error) string {
+	if network.IsConnectionClosed(err) {
+		return "connection closed by server"
+	}
 	switch classifyHTTPError(err) {
 	case "http_timeout":
 		return "HTTP request timed out"

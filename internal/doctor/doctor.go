@@ -62,12 +62,12 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 
 	printConfig(stdout, cfg)
 
-	baseURLVal, ok := cfg.Get("OPENAI_BASE_URL")
-	if !ok || baseURLVal.String() == "" {
+	baseURLVal, _ := cfg.Get("OPENAI_BASE_URL")
+	if baseURLVal.IsEmpty() {
 		fmt.Fprintln(stderr, "  ✗  Missing OPENAI_BASE_URL configuration.")
 		return 1
 	}
-	baseURL := baseURLVal.String()
+	baseURL := baseURLVal.RawValue()
 
 	// 2. Network Probes
 	fmt.Fprintln(stdout, "\n[2/4] Network Probes")

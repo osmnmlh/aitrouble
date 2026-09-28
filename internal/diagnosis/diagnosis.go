@@ -96,10 +96,10 @@ func diagnoseFailure(res core.ProbeResult) core.Diagnosis {
 			Summary:      "HTTP 200 was received but the expected /models response shape was not observed.",
 			FixHint:      "Check if the provider genuinely supports the OpenAI-compatible /models endpoint format.",
 		}
-	case "http_timeout", "http_cancelled":
+	case "http_error", "http_timeout", "http_cancelled":
 		return core.Diagnosis{
 			FailingLayer: "Provider › HTTP",
-			Summary:      "The HTTP request to the provider timed out or was cancelled.",
+			Summary:      "The HTTP request to the provider failed, timed out, or was cancelled.",
 			FixHint:      "Check network stability or increase request timeout if the provider is slow.",
 		}
 	case "provider_http_error":

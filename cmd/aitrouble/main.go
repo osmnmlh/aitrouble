@@ -31,6 +31,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	if args[0] == "--help" || args[0] == "-h" {
+		printUsage(stdout)
+		return 0
+	}
+
 	switch args[0] {
 	case "doctor":
 		fs := flag.NewFlagSet("doctor", flag.ContinueOnError)

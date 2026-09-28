@@ -36,6 +36,28 @@ func TestCLI_DoctorHelp(t *testing.T) {
 	}
 }
 
+func TestCLI_TopLevelHelp(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"--help"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("--help: expected exit 0, got %d", code)
+	}
+	if stdout.String() == "" {
+		t.Error("--help: expected usage text on stdout")
+	}
+}
+
+func TestCLI_TopLevelHelpShort(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"-h"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("-h: expected exit 0, got %d", code)
+	}
+	if stdout.String() == "" {
+		t.Error("-h: expected usage text on stdout")
+	}
+}
+
 func TestCLI_NoArgs(t *testing.T) {
 	// No args → usage + exit 2
 	var stdout, stderr bytes.Buffer

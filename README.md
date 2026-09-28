@@ -95,10 +95,10 @@ Download the binary for your platform from the [Releases page](https://github.co
 
 | Platform | Archive |
 |---|---|
-| Linux (x86\_64) | `aitrouble_Linux_x86_64.tar.gz` |
-| macOS (Intel) | `aitrouble_Darwin_x86_64.tar.gz` |
+| Linux (x86\_64) | `aitrouble_Linux_amd64.tar.gz` |
+| macOS (Intel) | `aitrouble_Darwin_amd64.tar.gz` |
 | macOS (Apple Silicon) | `aitrouble_Darwin_arm64.tar.gz` |
-| Windows (x86\_64) | `aitrouble_Windows_x86_64.zip` |
+| Windows (x86\_64) | `aitrouble_Windows_amd64.zip` |
 
 Checksums are provided as `checksums.txt` (SHA-256).
 
@@ -130,9 +130,9 @@ aitrouble doctor --env-file /path/to/.env
 ## How It Works
 
 ```
-Your Project Directory
-        │
-        ▼
+      Your Project Directory
+               │
+               ▼
 ┌───────────────────────────────┐
 │  1. Config Engine             │  shell env → .env → default
 │     → Effective Configuration │  Secrets are never printed

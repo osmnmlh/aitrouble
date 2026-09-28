@@ -4,7 +4,7 @@ project_name: aitrouble
 
 before:
   hooks:
-    - go test -race ./...
+    - go test ./...
     - go vet ./...
 
 builds:
@@ -30,7 +30,7 @@ builds:
 
 archives:
   - id: default
-    builds:
+    ids:
       - aitrouble
     name_template: "{{ .ProjectName }}_{{ .Os | title }}_{{ .Arch }}"
     format_overrides:

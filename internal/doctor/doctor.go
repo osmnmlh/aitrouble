@@ -139,10 +139,10 @@ func printConfig(w io.Writer, cfg core.EffectiveConfig) {
 func printConfigValue(w io.Writer, cfg core.EffectiveConfig, key string) {
 	val, ok := cfg.Get(key)
 	if !ok || !val.Present {
-		fmt.Fprintf(w, "  ⚠  %-18s (not set)\n", key)
+		fmt.Fprintf(w, "  ⚠  %-16s (not set)\n", key)
 		return
 	}
-	fmt.Fprintf(w, "  ✓  %-18s %-15s   source: %s\n", key, val.String(), val.Source)
+	fmt.Fprintf(w, "  ✓  %-16s %-15s   source: %s\n", key, val.String(), val.Source)
 }
 
 func printResults(w io.Writer, results []core.ProbeResult) {

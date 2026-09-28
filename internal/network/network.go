@@ -5,10 +5,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/osmnmlh/aitrouble/internal/core"
@@ -269,6 +271,9 @@ func classifyDialError(err error) string {
 	if isConnectionRefused(err) {
 		return "tcp_refused"
 	}
+	if IsConnectionClosed(err) {
+		return "tcp_error"
+	}
 	return "tcp_error"
 }
 
@@ -280,6 +285,22 @@ func isConnectionRefused(err error) bool {
 	return strings.Contains(s, "connection refused") || // Linux, macOS
 		strings.Contains(s, "actively refused") || // Windows
 		strings.Contains(s, "No connection could be made") // Windows
+}
+
+func IsConnectionClosed(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET) {
+		return true
+	}
+	var sysErr syscall.Errno
+	if errors.As(err, &sysErr) {
+		if sysErr == 10053 || sysErr == 10054 {
+			return true
+		}
+	}
+	return false
 }
 
 func classifyTLSError(err error) string {
@@ -307,6 +328,9 @@ func safeDNSSummary(err error) string {
 }
 
 func safeDialSummary(err error) string {
+	if IsConnectionClosed(err) {
+		return "connection closed by server"
+	}
 	switch classifyDialError(err) {
 	case "tcp_refused":
 		return "connection actively refused by target"

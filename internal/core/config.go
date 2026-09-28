@@ -24,6 +24,11 @@ func (v ConfigValue) RawValue() string {
 	return v.value
 }
 
+// IsEmpty returns true if the value is missing or an empty string.
+func (v ConfigValue) IsEmpty() bool {
+	return !v.Present || v.value == ""
+}
+
 // String safely formats the configuration value, redacting secrets.
 func (v ConfigValue) String() string {
 	if !v.Present {
@@ -233,14 +238,20 @@ func unquoteEnvValue(s string) string {
 }
 
 func stripInlineComment(s string) string {
-	if s == "" {
-		return s
-	}
-	if s[0] == '"' || s[0] == '\'' {
-		return s
-	}
-	if idx := strings.IndexByte(s, '#'); idx >= 0 {
-		s = strings.TrimRight(s[:idx], " \t")
+	inSQuote := false
+	inDQuote := false
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '\'' && !inDQuote {
+			inSQuote = !inSQuote
+		} else if c == '"' && !inSQuote {
+			inDQuote = !inDQuote
+		} else if c == '#' && !inSQuote && !inDQuote {
+			if i == 0 || s[i-1] == ' ' || s[i-1] == '\t' {
+				return strings.TrimRight(s[:i], " \t")
+			}
+		}
 	}
 	return s
 }

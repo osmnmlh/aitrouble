@@ -62,12 +62,12 @@ func runWithDeps(ctx context.Context, envFile string, stdout, stderr io.Writer, 
 
 	printConfig(stdout, cfg)
 
-	baseURLVal, ok := cfg.Get("OPENAI_BASE_URL")
-	if !ok || baseURLVal.String() == "" {
+	baseURLVal, _ := cfg.Get("OPENAI_BASE_URL")
+	if baseURLVal.IsEmpty() {
 		fmt.Fprintln(stderr, "  ✗  Missing OPENAI_BASE_URL configuration.")
 		return 1
 	}
-	baseURL := baseURLVal.String()
+	baseURL := baseURLVal.RawValue()
 
 	// 2. Network Probes
 	fmt.Fprintln(stdout, "\n[2/4] Network Probes")
@@ -139,10 +139,10 @@ func printConfig(w io.Writer, cfg core.EffectiveConfig) {
 func printConfigValue(w io.Writer, cfg core.EffectiveConfig, key string) {
 	val, ok := cfg.Get(key)
 	if !ok || !val.Present {
-		fmt.Fprintf(w, "  ⚠  %-16s (not set)\n", key)
+		fmt.Fprintf(w, "  ⚠  %-18s (not set)\n", key)
 		return
 	}
-	fmt.Fprintf(w, "  ✓  %-16s %-15s   source: %s\n", key, val.String(), val.Source)
+	fmt.Fprintf(w, "  ✓  %-18s %-15s   source: %s\n", key, val.String(), val.Source)
 }
 
 func printResults(w io.Writer, results []core.ProbeResult) {

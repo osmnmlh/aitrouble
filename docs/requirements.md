@@ -2,7 +2,7 @@
 
 ## 1. Product Goal
 
-To provide a definitively reliable, single-binary, read-only diagnostic tool that developers can use to figure out why their AI integration is failing without leaking their credentials or reading endless logs.
+To provide a reliable, single-binary, read-only diagnostic tool that developers can use to figure out why their AI integration is failing without leaking their credentials or reading endless logs.
 
 ## 2. Functional Requirements
 

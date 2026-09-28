@@ -1,10 +1,7 @@
 package provider
 
 import (
-	"context"
-	"errors"
 	"io"
-	"net"
 	"syscall"
 	"testing"
 )

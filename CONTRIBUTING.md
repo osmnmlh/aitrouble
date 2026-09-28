@@ -74,4 +74,4 @@ Please refer to:
 
 ## Security Reporting
 
-Do **not** open a public issue for security vulnerabilities. Email `security@aitrouble.dev` (or use GitHub's private vulnerability reporting).
+Do **not** open a public issue for security vulnerabilities. Use [GitHub's private vulnerability reporting](https://github.com/osmnmlh/aitrouble/security/advisories/new).
